@@ -1,0 +1,11 @@
+node_modules/
+npm-debug.log
+yarn-error.log
+android/.gradle/
+android/build/
+android/app/build/
+ios/build/
+android/app/.cxx/
+.env
+*.keystore
+*.jks
