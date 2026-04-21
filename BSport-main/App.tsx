@@ -7,6 +7,8 @@ import AppNavigator from './src/navigation/AppNavigator';
 // Import LocationProvider
 import { LocationProvider } from './src/context/LocationContext';
 
+console.log('APP START');
+
 export default function App() {
   console.log('APP INIT'); // 🔥 TARUH DI SINI
   return (

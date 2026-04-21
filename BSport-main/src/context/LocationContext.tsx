@@ -1,84 +1,81 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import Geolocation from '@react-native-community/geolocation';
-import { useAuthStore } from '../store/useAuthStore';
+import Geolocation from 'react-native-geolocation-service';
 import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 import { Platform } from 'react-native';
 
-const LocationContext = createContext<any>(null);
+type GPSStatus = 'searching' | 'good' | 'weak' | 'error';
+
+interface LocationState {
+  latitude: number;
+  longitude: number;
+  accuracy: number;
+  status: GPSStatus;
+}
+
+const LocationContext = createContext<LocationState | null>(null);
 
 export const LocationProvider = ({ children }: any) => {
-  const [location, setLocation] = useState<any>(null);
-  const token = useAuthStore(state => state.token);
+  const [location, setLocation] = useState<LocationState | null>(null);
+
   const requestLocationPermission = async () => {
-  let permission;
+    const permission =
+      Platform.OS === 'android'
+        ? PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION
+        : PERMISSIONS.IOS.LOCATION_WHEN_IN_USE;
 
-  if (Platform.OS === 'android') {
-    permission = PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION;
-  } else {
-    permission = PERMISSIONS.IOS.LOCATION_WHEN_IN_USE;
-  }
-
-  const result = await request(permission);
-
-  return result === RESULTS.GRANTED;
-};
-
-
-
-useEffect(() => {
-  if (!token) return; // ❌ kalau belum login, jangan jalan
-
-  let watchId: number | null = null;
-
-  const startGPS = async () => {
-  const hasPermission = await requestLocationPermission();
-
-  if (!hasPermission) {
-    console.log('❌ Izin lokasi ditolak');
-    return;
-  }
-
-  // lanjut GPS
-  Geolocation.getCurrentPosition(
-    position => {
-      console.log('⚡ FAST GPS:', position.coords);
-      setLocation(position.coords);
-    },
-    error => {
-      console.log('FAST GPS ERROR:', error);
-    },
-    {
-      enableHighAccuracy: false,
-      timeout: 10000,
-      maximumAge: 20000,
-    },
-  );
-
-  watchId = Geolocation.watchPosition(
-    position => {
-      console.log('🎯 GPS UPDATE:', position.coords);
-      setLocation(position.coords);
-    },
-    error => {
-      console.log('GPS ERROR:', error);
-    },
-    {
-      enableHighAccuracy: true,
-      distanceFilter: 2,
-      interval: 5000,
-      fastestInterval: 2000,
-    },
-  );
-};
-
-  startGPS();
-
-  return () => {
-    if (watchId !== null) {
-      Geolocation.clearWatch(watchId);
-    }
+    const result = await request(permission);
+    return result === RESULTS.GRANTED;
   };
-}, [token]); // 🔥 penting
+
+  useEffect(() => {
+    let watchId: number;
+
+    const startGPS = async () => {
+      const granted = await requestLocationPermission();
+
+      if (!granted) {
+        console.log('❌ Izin lokasi ditolak');
+        return;
+      }
+
+      watchId = Geolocation.watchPosition(
+        position => {
+          const { latitude, longitude, accuracy } = position.coords;
+
+          let status: GPSStatus = 'searching';
+
+          if (accuracy <= 15) status = 'good';
+          else if (accuracy <= 40) status = 'weak';
+          else status = 'weak'; // tetap weak, bukan searching
+
+          setLocation({
+            latitude,
+            longitude,
+            accuracy,
+            status,
+          });
+        },
+        error => {
+          console.log('GPS ERROR:', error);
+          setLocation(prev => (prev ? { ...prev, status: 'error' } : null));
+        },
+        {
+          enableHighAccuracy: true,
+          distanceFilter: 3,
+          interval: 4000,
+          fastestInterval: 2000,
+        },
+      );
+    };
+
+    startGPS();
+
+    return () => {
+      if (watchId !== undefined) {
+        Geolocation.clearWatch(watchId);
+      }
+    };
+  }, []);
 
   return (
     <LocationContext.Provider value={location}>

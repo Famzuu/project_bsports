@@ -1,4 +1,9 @@
-import React from 'react';
+import React, {
+  useImperativeHandle,
+  useRef,
+  forwardRef,
+  useState,
+} from 'react';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 import MapLibreGL from '@maplibre/maplibre-react-native';
 import { Coordinate } from '../types/tracking';
@@ -6,125 +11,177 @@ import { Coordinate } from '../types/tracking';
 interface Props {
   coords: Coordinate[];
   hasPermission: boolean;
-  currentLocation: [number, number] | null; // Data dari Context [longitude, latitude]
+  currentLocation: [number, number] | null;
 }
 
+// MapLibre tidak memerlukan token untuk base maps gratis dari Carto
 MapLibreGL.setAccessToken(null);
 
-export default function MapViewComponent({
-  coords,
-  hasPermission,
-  currentLocation,
-}: Props) {
-  // Tampilan Loading saat Permission belum di-allow
-  if (!hasPermission) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={{ marginTop: 10, color: '#666' }}>
-          Menunggu izin lokasi...
-        </Text>
-      </View>
-    );
-  }
+const MapViewComponent = forwardRef(
+  ({ coords, hasPermission, currentLocation }: Props, ref) => {
+    // Menggunakan any untuk menghindari konflik tipe internal MapLibre pada Camera
+    const cameraRef = useRef<any>(null);
+    const [isUserInteracting, setIsUserInteracting] = useState(false);
+    const [currentZoom, setCurrentZoom] = useState(16);
 
-  return (
-    <View style={{ flex: 1 }}>
-      {/* Tampilan Loading Transparan menunggu sinyal GPS pertama kali */}
-      {!currentLocation && (
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 10,
-            backgroundColor: 'rgba(255,255,255,0.7)',
-          }}
-        >
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={{ marginTop: 10, color: '#333', fontWeight: 'bold' }}>
-            Mencari satelit GPS...
-          </Text>
+    useImperativeHandle(ref, () => ({
+      zoomIn: () => {
+        setCurrentZoom(prev => {
+          const newZoom = prev + 1;
+          cameraRef.current?.setCamera({
+            zoomLevel: newZoom,
+            animationDuration: 300,
+          });
+          return newZoom;
+        });
+      },
+      zoomOut: () => {
+        setCurrentZoom(prev => {
+          const newZoom = prev - 1;
+          cameraRef.current?.setCamera({
+            zoomLevel: newZoom,
+            animationDuration: 300,
+          });
+          return newZoom;
+        });
+      },
+      recenter: () => {
+        setIsUserInteracting(false);
+        setCurrentZoom(16); // Reset zoom saat recenter
+        if (currentLocation && cameraRef.current) {
+          cameraRef.current.setCamera({
+            centerCoordinate: currentLocation,
+            zoomLevel: 16,
+            animationDuration: 1000,
+          });
+        }
+      },
+    }));
+
+    // State Loading jika izin lokasi belum diberikan
+    if (!hasPermission) {
+      return (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#FC4C02" />
+          <Text style={styles.loadingText}>Menunggu izin lokasi...</Text>
         </View>
-      )}
+      );
+    }
 
-      <MapLibreGL.MapView
-        style={{ flex: 1 }}
-        // ✅ GANTI BARIS INI: Gunakan peta gratis dari Carto (Voyager Style)
-        mapStyle="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
-        logoEnabled={false}
-      >
-        {/* ✅ KAMERA: Terbang otomatis mengikuti prop currentLocation */}
-        {currentLocation && (
+    return (
+      <View style={{ flex: 1 }}>
+        {/* Overlay saat mencari sinyal GPS pertama kali */}
+        {!currentLocation && (
+          <View style={styles.gpsLoadingOverlay}>
+            <ActivityIndicator size="large" color="#FC4C02" />
+            <Text style={styles.gpsLoadingText}>Mencari satelit GPS...</Text>
+          </View>
+        )}
+
+        <MapLibreGL.MapView
+          style={{ flex: 1 }}
+          mapStyle="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
+          logoEnabled={false}
+          attributionEnabled={false}
+          onPress={() => setIsUserInteracting(true)}
+        >
           <MapLibreGL.Camera
-            zoomLevel={16}
-            centerCoordinate={currentLocation}
+            ref={cameraRef}
+            zoomLevel={currentZoom}
+            centerCoordinate={currentLocation || [0, 0]}
+            followUserLocation={!isUserInteracting}
             animationMode="flyTo"
             animationDuration={1500}
           />
-        )}
 
-        {/* ✅ TITIK BIRU: Menggunakan Custom Annotation (Anti-Crash) */}
-        {currentLocation && (
-          <MapLibreGL.PointAnnotation
-            id="custom-user-location"
-            coordinate={currentLocation}
-          >
-            <View style={styles.userDotContainer}>
-              <View style={styles.userDot} />
-            </View>
-          </MapLibreGL.PointAnnotation>
-        )}
+          {/* Marker Lokasi User (Titik Oranye) */}
+          {currentLocation && (
+            <MapLibreGL.PointAnnotation
+              id="user-pos"
+              coordinate={currentLocation}
+            >
+              <View style={styles.userDotContainer}>
+                <View style={styles.userDot} />
+              </View>
+            </MapLibreGL.PointAnnotation>
+          )}
 
-        {/* ✅ RUTE TRACKING */}
-        {coords.length > 1 && (
-          <MapLibreGL.ShapeSource
-            id="routeSource"
-            shape={{
-              type: 'Feature',
-              properties: {},
-              geometry: {
-                type: 'LineString',
-                coordinates: coords.map(c => [c.longitude, c.latitude]),
-              },
-            }}
-          >
-            <MapLibreGL.LineLayer
-              id="routeLine"
-              style={{
-                lineColor: '#007AFF',
-                lineWidth: 5,
-                lineJoin: 'round',
-                lineCap: 'round',
+          {/* Gambar Rute (Polyline) */}
+          {coords.length > 1 && (
+            <MapLibreGL.ShapeSource
+              id="routeSource"
+              shape={{
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                  type: 'LineString',
+                  coordinates: coords.map(c => [c.longitude, c.latitude]),
+                },
               }}
-            />
-          </MapLibreGL.ShapeSource>
-        )}
-      </MapLibreGL.MapView>
-    </View>
-  );
-}
+            >
+              <MapLibreGL.LineLayer
+                id="routeLine"
+                style={{
+                  lineColor: '#FC4C02',
+                  lineWidth: 6,
+                  lineJoin: 'round',
+                  lineCap: 'round',
+                }}
+              />
+            </MapLibreGL.ShapeSource>
+          )}
+        </MapLibreGL.MapView>
+      </View>
+    );
+  },
+);
 
-// Styling Titik Biru ala Google Maps / Strava
 const styles = StyleSheet.create({
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#6B7280',
+    fontWeight: '600',
+  },
+  gpsLoadingOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 20,
+  },
+  gpsLoadingText: {
+    marginTop: 12,
+    color: '#111827',
+    fontWeight: '700',
+    fontSize: 16,
+  },
   userDotContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0, 122, 255, 0.25)', // Lingkaran luar transparan
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(252, 76, 2, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   userDot: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#007AFF', // Inti biru
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#FC4C02',
     borderWidth: 3,
-    borderColor: '#FFFFFF', // Border putih
+    borderColor: '#FFFFFF',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 2 },
   },
 });
+
+export default MapViewComponent;

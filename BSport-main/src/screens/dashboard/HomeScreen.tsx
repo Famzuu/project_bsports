@@ -201,7 +201,6 @@ export default function HomeScreen() {
       {/* Top Navbar */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>B-SPORT</Text>
-        <View style={styles.avatar} />
       </View>
 
       {/* Tab Toggle (Aktivitas vs Event) */}
