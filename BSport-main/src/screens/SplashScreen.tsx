@@ -1,36 +1,29 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text } from 'react-native';
+import LottieView from 'lottie-react-native';
+import { styles } from '../style/SplashStyle'; // Import style terpisah
 
 export default function SplashScreen() {
   return (
     <View style={styles.container}>
-      {/* Ganti dengan logo kamu */}
-      <Image
-        source={require('../assets/logo.png')} // 🔥 sesuaikan path
-        style={styles.logo}
-        resizeMode="contain"
-      />
+      {/* Container untuk Animasi agar terpusat */}
+      <View style={styles.animationWrapper}>
+        <LottieView
+          source={require('../assets/run.json')} // Pastikan path benar
+          autoPlay
+          loop
+          style={styles.lottie}
+        />
+      </View>
 
-      <Text style={styles.title}>B'Sports</Text>
+      {/* Text Section di bagian bawah */}
+      <View style={styles.footer}>
+        <Text style={styles.title}>B-SPORT</Text>
+        <Text style={styles.tagline}>LIMITLESS PERFORMANCE</Text>
+      </View>
+
+      {/* Dekorasi halus di background (opsional) */}
+      <View style={styles.circleDecor} />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8AD3C',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  logo: {
-    width: 120,
-    height: 120,
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 22,
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-});

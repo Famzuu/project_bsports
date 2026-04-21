@@ -8,6 +8,7 @@ import HomeScreen from '../screens/dashboard/HomeScreen';
 import TrackingScreen from '../screens/tracking/TrackingScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import MainLayout from '../layouts/MainLayout';
+import SaveActivityScreen from '../screens/tracking/SaveActivityScreen';
 
 // Import Screens - Auth
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -35,7 +36,9 @@ export type RootStackParamList = {
 
   AdminEventList: undefined;
   AdminCreateEvent: undefined;
-  AdminParticipants: { eventId: number }; // ✅ ada param
+  AdminParticipants: { eventId: number };
+
+  SaveActivityScreen: { activityId: number }; // 🔥 TAMBAHKAN
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -84,8 +87,18 @@ export default function AppNavigator() {
           <>
             <Stack.Screen name="Main" component={MainTabs} />
             <Stack.Screen name="AdminEventList" component={AdminEventList} />
-            <Stack.Screen name="AdminCreateEvent" component={AdminCreateEvent} />
-            <Stack.Screen name="AdminParticipants" component={AdminParticipants} />
+            <Stack.Screen
+              name="AdminCreateEvent"
+              component={AdminCreateEvent}
+            />
+            <Stack.Screen
+              name="AdminParticipants"
+              component={AdminParticipants}
+            />
+            <Stack.Screen
+              name="SaveActivityScreen"
+              component={SaveActivityScreen}
+            />
           </>
         ) : (
           <>

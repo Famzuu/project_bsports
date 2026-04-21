@@ -9,6 +9,14 @@ export const useTrackingStore = create<TrackingState>(set => ({
   pauseTime: null,
   totalPausedDuration: 0,
 
+  // 🔥 TAMBAHAN
+  activityId: null,
+
+  setActivityId: (id: number) =>
+    set({
+      activityId: id,
+    }),
+
   startTracking: () =>
     set({
       isTracking: true,
@@ -42,7 +50,7 @@ export const useTrackingStore = create<TrackingState>(set => ({
 
   addCoord: coord =>
     set(state => ({
-      coords: [...state.coords, coord],
+      coords: [...state.coords.slice(-500), coord],
     })),
 
   resetTracking: () =>
@@ -53,5 +61,6 @@ export const useTrackingStore = create<TrackingState>(set => ({
       startTime: null,
       pauseTime: null,
       totalPausedDuration: 0,
+      activityId: null, // 🔥 WAJIB RESET
     }),
 }));

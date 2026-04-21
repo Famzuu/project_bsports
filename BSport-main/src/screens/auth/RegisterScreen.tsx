@@ -4,194 +4,174 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  Alert,
   ActivityIndicator,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context'; // ✅ Import Safe Area
+import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  Eye,
+  EyeOff,
+  Mail,
+  Lock,
+  User,
+} from 'lucide-react-native';
 import api from '../../services/api';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { styles } from '../../style/RegisterStyle'; // Import style terpisah
 
 export default function RegisterScreen({ navigation }: any) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [noHp, setNoHp] = useState('');
+  const [unitKerja, setUnitKerja] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [noHp, setNoHp] = useState('');
-  const [unitKerja, setUnitKerja] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleRegister = async () => {
-    if ( !email || !password || !passwordConfirmation) {
-      Alert.alert('Error', 'Semua kolom wajib diisi!');
+    if (!email || !password || !passwordConfirmation || !name) {
+      Alert.alert('Pemberitahuan', 'Semua kolom wajib diisi!');
       return;
     }
 
     if (password !== passwordConfirmation) {
-      Alert.alert('Error', 'Password dan Konfirmasi Password tidak cocok!');
+      Alert.alert('Error', 'Password dan Konfirmasi tidak cocok!');
       return;
     }
 
     setIsLoading(true);
     try {
       await api.post('/register', {
+        name,
         email,
+        no_hp: noHp,
+        unit_kerja: unitKerja,
         password,
         password_confirmation: passwordConfirmation,
       });
-      Alert.alert(
-        'Sukses',
-        'Registrasi berhasil! Silakan login untuk melanjutkan.',
-        [{ text: 'OK', onPress: () => navigation.navigate('Login') }],
-      );
+      Alert.alert('Sukses', 'Akun berhasil dibuat! Silakan login.', [
+        { text: 'Masuk Sekarang', onPress: () => navigation.navigate('Login') },
+      ]);
     } catch (error: any) {
-      console.log('FULL ERROR:', error);
-      console.log('RESPONSE:', error.response?.data);
-
       const errorMessage = error.response?.data?.errors
         ? Object.values(error.response.data.errors).flat().join('\n')
         : error.response?.data?.message || 'Terjadi kesalahan';
-
       Alert.alert('Registrasi Gagal', errorMessage);
     } finally {
-      setIsLoading(false); // ✅ PASTIKAN SELALU MATI
+      setIsLoading(false);
     }
   };
 
   return (
-    // ✅ Bungkus layar dengan SafeAreaView
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.flex}
       >
-        <Text style={styles.title}>B'Sports</Text>
-        <Text style={styles.subtitle}>Buat akun baru Anda</Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-
-        <View style={styles.passwordContainer}>
-          <TextInput
-            style={styles.passwordInput}
-            placeholder="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-          />
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-            <Icon
-              name={showPassword ? 'eye-off' : 'eye'}
-              size={20}
-              color="#666"
-            />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.passwordContainer}>
-          <TextInput
-            style={styles.passwordInput}
-            placeholder="Konfirmasi Password"
-            value={passwordConfirmation}
-            onChangeText={setPasswordConfirmation}
-            secureTextEntry={!showConfirmPassword}
-          />
-          <TouchableOpacity
-            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-          >
-            <Icon
-              name={showConfirmPassword ? 'eye-off' : 'eye'}
-              size={20}
-              color="#666"
-            />
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity
-          style={styles.button}
-          onPress={handleRegister}
-          disabled={isLoading}
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContainer}
         >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>DAFTAR</Text>
-          )}
-        </TouchableOpacity>
+          {/* Header Section */}
+          <View style={styles.headerSection}>
+            <Text style={styles.title}>DAFTAR AKUN</Text>
+            <Text style={styles.subtitle}>
+              Bergabunglah dengan komunitas B-SPORT
+            </Text>
+          </View>
 
-        <TouchableOpacity
-          style={styles.loginLink}
-          onPress={() => navigation.navigate('Login')}
-        >
-          <Text style={styles.loginText}>Sudah punya akun? Masuk di sini</Text>
-        </TouchableOpacity>
-      </ScrollView>
+          {/* Form Section */}
+          <View style={styles.formSection}>
+            <Text style={styles.label}>Nama Lengkap</Text>
+            <View style={styles.inputWrapper}>
+              <User size={18} color="#9CA3AF" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Masukkan nama lengkap"
+                value={name}
+                onChangeText={setName}
+              />
+            </View>
+
+            <Text style={styles.label}>Email</Text>
+            <View style={styles.inputWrapper}>
+              <Mail size={18} color="#9CA3AF" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Masukkan email"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={email}
+                onChangeText={setEmail}
+              />
+            </View>
+
+            <Text style={styles.label}>Password</Text>
+            <View style={styles.inputWrapper}>
+              <Lock size={18} color="#9CA3AF" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Buat password"
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                {showPassword ? (
+                  <EyeOff size={20} color="#6B7280" />
+                ) : (
+                  <Eye size={20} color="#6B7280" />
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.label}>Konfirmasi Password</Text>
+            <View style={styles.inputWrapper}>
+              <Lock size={18} color="#9CA3AF" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Ulangi password"
+                secureTextEntry={!showConfirmPassword}
+                value={passwordConfirmation}
+                onChangeText={setPasswordConfirmation}
+              />
+              <TouchableOpacity
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                {showConfirmPassword ? (
+                  <EyeOff size={20} color="#6B7280" />
+                ) : (
+                  <Eye size={20} color="#6B7280" />
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.button, isLoading && styles.buttonDisabled]}
+              onPress={handleRegister}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>BUAT AKUN</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Footer Section */}
+          <View style={styles.footerSection}>
+            <Text style={styles.noAccountText}>Sudah punya akun?</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+              <Text style={styles.loginLinkText}> Masuk di sini</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F7F9' }, // ✅ Style untuk Safe Area
-  container: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#F8AD3C',
-    textAlign: 'center',
-    marginBottom: 5,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 30,
-  },
-  input: {
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#DDD',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 15,
-  },
-
-  passwordContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    marginBottom: 15,
-  },
-
-  passwordInput: {
-    flex: 1,
-    paddingVertical: 15,
-  },
-
-  button: {
-    backgroundColor: '#4CAF50',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  buttonText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
-  loginLink: { marginTop: 20, alignItems: 'center' },
-  loginText: { color: '#4CAF50', fontSize: 14, fontWeight: '600' },
-});

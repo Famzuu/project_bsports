@@ -1,0 +1,125 @@
+import { StyleSheet } from 'react-native';
+
+const BSports_ORANGE = '#F8AD3C';
+
+export const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#F9FAFB',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  container: {
+    padding: 24,
+  },
+  sectionLabel: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#111827',
+    marginBottom: 25,
+    letterSpacing: -0.5,
+  },
+  inputContainer: {
+    marginBottom: 24,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#374151',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 10,
+  },
+  input: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: '#111827',
+    fontWeight: '600',
+  },
+  textArea: {
+    height: 120,
+    paddingTop: 16,
+  },
+  sportRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  sportBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  activeSportBtn: {
+    backgroundColor: BSports_ORANGE,
+    borderColor: BSports_ORANGE,
+    shadowColor: BSports_ORANGE,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  sportBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#6B7280',
+  },
+  activeSportBtnText: {
+    color: '#FFFFFF',
+  },
+  saveBtn: {
+    backgroundColor: '#111827',
+    flexDirection: 'row',
+    height: 58,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  disabledBtn: {
+    opacity: 0.7,
+  },
+  saveBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+});

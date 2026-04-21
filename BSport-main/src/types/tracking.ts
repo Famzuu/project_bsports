@@ -6,15 +6,18 @@ export interface Coordinate {
 
 export interface TrackingState {
   isTracking: boolean;
-  isPaused: boolean; 
+  isPaused: boolean;
   coords: Coordinate[];
   startTime: number | null;
-  pauseTime: number | null; 
-  totalPausedDuration: number; 
+  pauseTime: number | null;
+  totalPausedDuration: number;
+
+  activityId: number | null;
+  setActivityId: (id: number) => void;
 
   startTracking: () => void;
   stopTracking: () => void;
-  pauseTracking: () => void; 
+  pauseTracking: () => void;
   resumeTracking: () => void;
   addCoord: (coord: Coordinate) => void;
   resetTracking: () => void;

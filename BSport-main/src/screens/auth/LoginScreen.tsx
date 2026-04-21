@@ -4,14 +4,16 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context'; // ✅ Import Safe Area
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Eye, EyeOff, Mail, Lock } from 'lucide-react-native';
 import api from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { styles } from '../../style/LoginStyle'; // Import style terpisah
 
 export default function LoginScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
@@ -22,21 +24,15 @@ export default function LoginScreen({ navigation }: any) {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Email dan Password wajib diisi!');
+      Alert.alert('Pemberitahuan', 'Email dan Password wajib diisi!');
       return;
     }
 
     setIsLoading(true);
     try {
-      const response = await api.post('/login', {
-        email: email,
-        password: password,
-      });
-
-      const token = response.data.access_token;
-      const user = response.data.user;
-
-      setAuth(token, user); // 🔥 INI YANG KAMU LUPA
+      const response = await api.post('/login', { email, password });
+      const { access_token, user } = response.data;
+      setAuth(access_token, user);
     } catch (error: any) {
       Alert.alert(
         'Login Gagal',
@@ -48,113 +44,76 @@ export default function LoginScreen({ navigation }: any) {
   };
 
   return (
-    // ✅ Bungkus layar dengan SafeAreaView
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <Text style={styles.title}>B'Sports</Text>
-        <Text style={styles.subtitle}>Masuk untuk mulai melacak</Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.flex}
+      >
+        <View style={styles.container}>
+          {/* Header Section */}
+          <View style={styles.headerSection}>
+            <Text style={styles.title}>B-SPORT</Text>
+            <Text style={styles.subtitle}>Masuk untuk melanjutkan aktivitas latihan Anda</Text>
+          </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
+          {/* Form Section */}
+          <View style={styles.formSection}>
+            <Text style={styles.label}>Email</Text>
+            <View style={styles.inputWrapper}>
+              <Mail size={18} color="#9CA3AF" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Masukkan email"
+                placeholderTextColor="#9CA3AF"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
 
-        <View style={styles.passwordContainer}>
-          <TextInput
-            style={styles.passwordInput}
-            placeholder="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-          />
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-            <Icon
-              name={showPassword ? 'eye-off' : 'eye'}
-              size={20}
-              color="#666"
-            />
-          </TouchableOpacity>
+            <Text style={styles.label}>Password</Text>
+            <View style={styles.inputWrapper}>
+              <Lock size={18} color="#9CA3AF" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Masukkan password"
+                placeholderTextColor="#9CA3AF"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                {showPassword ? <EyeOff size={20} color="#6B7280" /> : <Eye size={20} color="#6B7280" />}
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity style={styles.forgotPass}>
+              <Text style={styles.forgotPassText}>Lupa Password?</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.button, isLoading && styles.buttonDisabled]}
+              onPress={handleLogin}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>MASUK</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Footer Section */}
+          <View style={styles.footerSection}>
+            <Text style={styles.noAccountText}>Belum punya akun?</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+              <Text style={styles.registerText}> Daftar sekarang</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-
-        <TouchableOpacity
-          style={styles.button}
-          onPress={handleLogin}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>LOGIN</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.registerLink}
-          onPress={() => navigation.navigate('Register')}
-        >
-          <Text style={styles.registerText}>
-            Belum punya akun? Daftar di sini
-          </Text>
-        </TouchableOpacity>
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F7F9' }, // ✅ Style untuk Safe Area
-  container: { flex: 1, justifyContent: 'center', padding: 20 },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#F8AD3C',
-    textAlign: 'center',
-    marginBottom: 5,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 30,
-  },
-  input: {
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#DDD',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 15,
-  },
-
-  passwordContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    marginBottom: 15,
-  },
-
-  passwordInput: {
-    flex: 1,
-    paddingVertical: 15,
-    marginRight: 10, // ✅ biar icon ada jarak
-  },
-
-  button: {
-    backgroundColor: '#4CAF50',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  buttonText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
-  registerLink: { marginTop: 20, alignItems: 'center' },
-  registerText: { color: '#4CAF50', fontSize: 14, fontWeight: '600' },
-});

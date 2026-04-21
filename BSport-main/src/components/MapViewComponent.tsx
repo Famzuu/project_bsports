@@ -12,17 +12,23 @@ interface Props {
   coords: Coordinate[];
   hasPermission: boolean;
   currentLocation: [number, number] | null;
+  isDark: boolean; // 🔥 Pastikan ini ada
 }
 
-// MapLibre tidak memerlukan token untuk base maps gratis dari Carto
 MapLibreGL.setAccessToken(null);
 
 const MapViewComponent = forwardRef(
-  ({ coords, hasPermission, currentLocation }: Props, ref) => {
-    // Menggunakan any untuk menghindari konflik tipe internal MapLibre pada Camera
+  // 🔥 TAMBAHKAN isDark di sini (destructuring props)
+  ({ coords, hasPermission, currentLocation, isDark }: Props, ref) => {
     const cameraRef = useRef<any>(null);
     const [isUserInteracting, setIsUserInteracting] = useState(false);
     const [currentZoom, setCurrentZoom] = useState(16);
+
+    // URL Map Style dari Carto
+    const LIGHT_STYLE =
+      'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json';
+    const DARK_STYLE =
+      'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
     useImperativeHandle(ref, () => ({
       zoomIn: () => {
@@ -47,7 +53,7 @@ const MapViewComponent = forwardRef(
       },
       recenter: () => {
         setIsUserInteracting(false);
-        setCurrentZoom(16); // Reset zoom saat recenter
+        setCurrentZoom(16);
         if (currentLocation && cameraRef.current) {
           cameraRef.current.setCamera({
             centerCoordinate: currentLocation,
@@ -58,29 +64,57 @@ const MapViewComponent = forwardRef(
       },
     }));
 
-    // State Loading jika izin lokasi belum diberikan
+    // Logic Loading Izin
     if (!hasPermission) {
       return (
-        <View style={styles.center}>
+        <View
+          style={[
+            styles.center,
+            { backgroundColor: isDark ? '#050505' : '#F3F4F6' },
+          ]}
+        >
           <ActivityIndicator size="large" color="#FC4C02" />
-          <Text style={styles.loadingText}>Menunggu izin lokasi...</Text>
+          <Text
+            style={[
+              styles.loadingText,
+              { color: isDark ? '#8E8E93' : '#6B7280' },
+            ]}
+          >
+            Menunggu izin lokasi...
+          </Text>
         </View>
       );
     }
 
     return (
       <View style={{ flex: 1 }}>
-        {/* Overlay saat mencari sinyal GPS pertama kali */}
         {!currentLocation && (
-          <View style={styles.gpsLoadingOverlay}>
+          <View
+            style={[
+              styles.gpsLoadingOverlay,
+              {
+                backgroundColor: isDark
+                  ? 'rgba(0,0,0,0.8)'
+                  : 'rgba(255,255,255,0.85)',
+              },
+            ]}
+          >
             <ActivityIndicator size="large" color="#FC4C02" />
-            <Text style={styles.gpsLoadingText}>Mencari satelit GPS...</Text>
+            <Text
+              style={[
+                styles.gpsLoadingText,
+                { color: isDark ? '#FFFFFF' : '#111827' },
+              ]}
+            >
+              Mencari satelit GPS...
+            </Text>
           </View>
         )}
 
         <MapLibreGL.MapView
           style={{ flex: 1 }}
-          mapStyle="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
+          // 🔥 GANTI STYLE SECARA DINAMIS
+          mapStyle={isDark ? DARK_STYLE : LIGHT_STYLE}
           logoEnabled={false}
           attributionEnabled={false}
           onPress={() => setIsUserInteracting(true)}
@@ -94,7 +128,6 @@ const MapViewComponent = forwardRef(
             animationDuration={1500}
           />
 
-          {/* Marker Lokasi User (Titik Oranye) */}
           {currentLocation && (
             <MapLibreGL.PointAnnotation
               id="user-pos"
@@ -106,7 +139,6 @@ const MapViewComponent = forwardRef(
             </MapLibreGL.PointAnnotation>
           )}
 
-          {/* Gambar Rute (Polyline) */}
           {coords.length > 1 && (
             <MapLibreGL.ShapeSource
               id="routeSource"
@@ -141,23 +173,19 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
   },
   loadingText: {
     marginTop: 10,
-    color: '#6B7280',
     fontWeight: '600',
   },
   gpsLoadingOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(255,255,255,0.85)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 20,
   },
   gpsLoadingText: {
     marginTop: 12,
-    color: '#111827',
     fontWeight: '700',
     fontSize: 16,
   },
@@ -176,11 +204,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FC4C02',
     borderWidth: 3,
     borderColor: '#FFFFFF',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    shadowOffset: { width: 0, height: 2 },
   },
 });
 
