@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import Geolocation from 'react-native-geolocation-service';
 import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 
 type GPSStatus = 'searching' | 'good' | 'weak' | 'error';
 
@@ -18,63 +18,61 @@ export const LocationProvider = ({ children }: any) => {
   const [location, setLocation] = useState<LocationState | null>(null);
 
   const requestLocationPermission = async () => {
-    const permission =
-      Platform.OS === 'android'
-        ? PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION
-        : PERMISSIONS.IOS.LOCATION_WHEN_IN_USE;
+    try {
+      const permission =
+        Platform.OS === 'android'
+          ? PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION
+          : PERMISSIONS.IOS.LOCATION_WHEN_IN_USE;
 
-    const result = await request(permission);
-    return result === RESULTS.GRANTED;
+      const result = await request(permission);
+      
+      // Jika di-allow, kembalikan true
+      if (result === RESULTS.GRANTED) {
+        return true;
+      }
+
+      // Jika ditolak, beri tahu user
+      Alert.alert(
+        'Izin Ditolak',
+        'Aplikasi membutuhkan akses GPS untuk melacak rute lari Anda.'
+      );
+      return false;
+    } catch (err) {
+      console.warn('Error saat request permission:', err);
+      return false;
+    }
+  };
+
+  const fetchInitialLocation = async () => {
+    const hasPermission = await requestLocationPermission();
+    
+    if (!hasPermission) return;
+
+    // 🔥 Tembak GPS setelah izin dipastikan didapat
+    Geolocation.getCurrentPosition(
+      position => {
+        setLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          status: 'good',
+        });
+      },
+      error => {
+        console.log('Error Initial GPS:', error);
+        // Coba lagi jika error (misal GPS baru dinyalakan user)
+        setTimeout(fetchInitialLocation, 3000); 
+      },
+      { 
+        enableHighAccuracy: true, 
+        timeout: 15000, 
+        maximumAge: 10000 // Gunakan cache 10 detik agar lebih cepat
+      }
+    );
   };
 
   useEffect(() => {
-    let watchId: number;
-
-    const startGPS = async () => {
-      const granted = await requestLocationPermission();
-
-      if (!granted) {
-        console.log('❌ Izin lokasi ditolak');
-        return;
-      }
-
-      watchId = Geolocation.watchPosition(
-        position => {
-          const { latitude, longitude, accuracy } = position.coords;
-
-          let status: GPSStatus = 'searching';
-
-          if (accuracy <= 15) status = 'good';
-          else if (accuracy <= 40) status = 'weak';
-          else status = 'weak'; // tetap weak, bukan searching
-
-          setLocation({
-            latitude,
-            longitude,
-            accuracy,
-            status,
-          });
-        },
-        error => {
-          console.log('GPS ERROR:', error);
-          setLocation(prev => (prev ? { ...prev, status: 'error' } : null));
-        },
-        {
-          enableHighAccuracy: true,
-          distanceFilter: 3,
-          interval: 4000,
-          fastestInterval: 2000,
-        },
-      );
-    };
-
-    startGPS();
-
-    return () => {
-      if (watchId !== undefined) {
-        Geolocation.clearWatch(watchId);
-      }
-    };
+    fetchInitialLocation();
   }, []);
 
   return (

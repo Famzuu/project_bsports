@@ -12,7 +12,10 @@ export interface TrackingState {
   pauseTime: number | null;
   totalPausedDuration: number;
 
+  totalDistance: number; // 🔥 TAMBAHKAN
+
   activityId: number | null;
+
   setActivityId: (id: number) => void;
 
   startTracking: () => void;

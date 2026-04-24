@@ -34,6 +34,8 @@ export default function SaveActivityScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleSave = async () => {
+    console.log('ACTIVITY ID:', activityId);
+
     if (!title) {
       Alert.alert('Pemberitahuan', 'Judul aktivitas wajib diisi');
       return;
@@ -41,6 +43,7 @@ export default function SaveActivityScreen() {
 
     try {
       setLoading(true);
+
       await api.post(`/activities/${activityId}/save`, {
         title,
         description,
@@ -48,11 +51,13 @@ export default function SaveActivityScreen() {
       });
 
       Alert.alert('Berhasil!', 'Aktivitas Anda telah diabadikan.');
+
       navigation.reset({
         index: 0,
         routes: [{ name: 'Main', state: { routes: [{ name: 'Home' }] } }],
       });
-    } catch (err) {
+    } catch (err: any) {
+      console.log('SAVE ERROR:', err?.response?.data || err.message);
       Alert.alert('Error', 'Gagal menyimpan aktivitas');
     } finally {
       setLoading(false);

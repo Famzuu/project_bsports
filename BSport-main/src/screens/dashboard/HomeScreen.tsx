@@ -15,13 +15,13 @@ import {
   Trophy,
   Calendar,
   ArrowRight,
-  Bell,
   Search,
   Activity,
   Flame,
   Timer,
 } from 'lucide-react-native';
 import EventSkeleton from '../../components/EventSkeleton';
+import MapViewComponent from '../../components/MapViewComponent';
 
 // Instance API & Types
 import api from '../../services/api';
@@ -37,6 +37,28 @@ export default function HomeScreen() {
   const [events, setEvents] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [activities, setActivities] = useState<any[]>([]);
+  const [pointsMap, setPointsMap] = useState<{ [key: number]: any[] }>({});
+
+  const formatDuration = (seconds: number) => {
+    if (!seconds) return '0:00';
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const formatPace = (pace: number, distance?: number) => {
+    if (!pace || !distance) return '--';
+
+    if (distance < 0.1) return '--';
+
+    if (pace < 30 || pace > 1800) return '--';
+
+    const m = Math.floor(pace / 60);
+    const s = pace % 60;
+
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
 
   const fetchEvents = async () => {
     try {
@@ -52,13 +74,23 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (activeTab === 'events') fetchEvents();
+      if (activeTab === 'feed') {
+        fetchActivities();
+      } else {
+        fetchEvents();
+      }
     }, [activeTab]),
   );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    if (activeTab === 'events') await fetchEvents();
+
+    if (activeTab === 'feed') {
+      await fetchActivities();
+    } else {
+      await fetchEvents();
+    }
+
     setRefreshing(false);
   }, [activeTab]);
 
@@ -72,6 +104,47 @@ export default function HomeScreen() {
         'Pemberitahuan',
         error.response?.data?.message || 'Gagal mendaftar',
       );
+    }
+  };
+
+  const fetchActivities = async () => {
+    try {
+      setIsLoading(true);
+
+      const res = await api.get('/activities');
+
+      const filtered = res.data.data.filter(
+        (item: any) => item.status === 'finished',
+      );
+
+      setActivities(filtered);
+
+      // 🔥 FETCH POINTS SEMUA
+      filtered.forEach((item: any) => {
+        fetchPoints(item.act_id);
+      });
+    } catch (err) {
+      console.log(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchPoints = async (actId: number) => {
+    try {
+      const res = await api.get(`/activities/${actId}/points`);
+
+      const mapped = res.data.data.map((p: any) => [
+        Number(p.longitude),
+        Number(p.latitude),
+      ]);
+
+      setPointsMap(prev => ({
+        ...prev,
+        [actId]: mapped,
+      }));
+    } catch (err) {
+      console.log(err);
     }
   };
 
@@ -252,44 +325,84 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.activityCardPremium}>
+            {activities.length === 0 ? (
+              <Text style={styles.emptyText}>Belum ada aktivitas.</Text>
+            ) : (
+              activities.map(item => (
+                <View key={item.act_id} style={styles.activityCardPremium}>
+                  <Text style={styles.activityTitlePremium}>
+                    {item.title || 'Aktivitas'}
+                  </Text>
 
-              <Text style={styles.activityTitlePremium}>
-                Sunset Cardio & Endurance
-              </Text>
+                  {/* DATE */}
+                  <Text
+                    style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}
+                  >
+                    {new Date(item.start_time).toLocaleDateString('id-ID')}
+                  </Text>
 
-              <View style={styles.premiumStatsGrid}>
-                <View style={styles.mainStat}>
-                  <Text style={styles.mainStatValue}>5.20</Text>
-                  <Text style={styles.mainStatLabel}>KILOMETER</Text>
-                </View>
-                <View style={styles.statsDivider} />
-                <View style={styles.subStatsColumn}>
-                  <View style={styles.subStatItem}>
-                    <Text style={styles.subStatLabel}>Pace</Text>
-                    <Text style={styles.subStatValue}>5:40</Text>
+                  <View style={styles.premiumStatsGrid}>
+                    <View style={styles.mainStat}>
+                      <Text style={styles.mainStatValue}>
+                        {Number(item.distance).toFixed(2)}
+                      </Text>
+                      <Text style={styles.mainStatLabel}>KILOMETER</Text>
+                    </View>
+
+                    <View style={styles.statsDivider} />
+
+                    <View style={styles.subStatsColumn}>
+                      <View style={styles.subStatItem}>
+                        <Text style={styles.subStatLabel}>Pace</Text>
+                        <Text style={styles.subStatValue}>
+                          {formatPace(item.pace, item.distance)}
+                        </Text>
+                      </View>
+
+                      <View style={styles.subStatItem}>
+                        <Text style={styles.subStatLabel}>Waktu</Text>
+                        <Text style={styles.subStatValue}>
+                          {formatDuration(item.duration)}
+                        </Text>
+                      </View>
+                    </View>
                   </View>
-                  <View style={styles.subStatItem}>
-                    <Text style={styles.subStatLabel}>Waktu</Text>
-                    <Text style={styles.subStatValue}>29:30</Text>
+
+                  <View
+                    style={{
+                      height: 180,
+                      borderRadius: 16,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {pointsMap[item.act_id] ? (
+                      <MapViewComponent
+                        coords={pointsMap[item.act_id]}
+                        hasPermission={true}
+                        isDark={false}
+                        currentLocation={
+                          pointsMap[item.act_id]?.length > 0
+                            ? pointsMap[item.act_id][
+                                pointsMap[item.act_id].length - 1
+                              ]
+                            : null
+                        }
+                      />
+                    ) : (
+                      <View
+                        style={{
+                          flex: 1,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Text>Loading route...</Text>
+                      </View>
+                    )}
                   </View>
                 </View>
-              </View>
-
-              <View style={styles.mapContainerPremium}>
-                <Image
-                  source={{
-                    uri: 'https://images.unsplash.com/photo-1526628953301-3e589a6a8b74?q=80&w=1000',
-                  }}
-                  style={styles.mapImage}
-                />
-                <View style={styles.mapOverlay}>
-                  <TouchableOpacity style={styles.mapActionButton}>
-                    <Text style={styles.mapActionText}>Lihat Analisa Rute</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
+              ))
+            )}
           </View>
         ) : (
           renderEventContent()

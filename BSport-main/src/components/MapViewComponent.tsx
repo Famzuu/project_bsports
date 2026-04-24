@@ -3,32 +3,76 @@ import React, {
   useRef,
   forwardRef,
   useState,
+  useEffect,
 } from 'react';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 import MapLibreGL from '@maplibre/maplibre-react-native';
-import { Coordinate } from '../types/tracking';
 
 interface Props {
-  coords: Coordinate[];
+  coords: number[][]; // 🔥 FIX: sekarang format [lng, lat]
   hasPermission: boolean;
   currentLocation: [number, number] | null;
-  isDark: boolean; // 🔥 Pastikan ini ada
+  isDark: boolean;
 }
 
 MapLibreGL.setAccessToken(null);
 
 const MapViewComponent = forwardRef(
-  // 🔥 TAMBAHKAN isDark di sini (destructuring props)
   ({ coords, hasPermission, currentLocation, isDark }: Props, ref) => {
     const cameraRef = useRef<any>(null);
     const [isUserInteracting, setIsUserInteracting] = useState(false);
-    const [currentZoom, setCurrentZoom] = useState(16);
+    const [currentZoom, setCurrentZoom] = useState(14);
 
-    // URL Map Style dari Carto
     const LIGHT_STYLE =
       'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json';
     const DARK_STYLE =
       'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+
+    // ==========================================
+    // 🔥 AUTO FIT ROUTE (INI YANG BIKIN KELIATAN)
+    // ==========================================
+    const hasFittedRef = useRef(false);
+    const lastCameraUpdate = useRef(0);
+
+    useEffect(() => {
+      if (
+        !coords ||
+        coords.length < 2 ||
+        !cameraRef.current ||
+        hasFittedRef.current
+      )
+        return;
+
+      const lats = coords.map(c => c[1]);
+      const lngs = coords.map(c => c[0]);
+
+      const minLat = Math.min(...lats);
+      const maxLat = Math.max(...lats);
+      const minLng = Math.min(...lngs);
+      const maxLng = Math.max(...lngs);
+
+      // 🔥 BLOCK kalau jarak terlalu jauh (GPS error)
+      if (maxLat - minLat > 0.01 || maxLng - minLng > 0.01) return;
+
+      cameraRef.current.fitBounds([minLng, minLat], [maxLng, maxLat], 50, 1000);
+
+      hasFittedRef.current = true;
+    }, [coords]);
+
+    useEffect(() => {
+      if (!cameraRef.current || !currentLocation) return;
+
+      const now = Date.now();
+
+      if (!isUserInteracting && now - lastCameraUpdate.current > 2000) {
+        cameraRef.current.setCamera({
+          centerCoordinate: currentLocation,
+          animationDuration: 500,
+        });
+
+        lastCameraUpdate.current = now;
+      }
+    }, [currentLocation]);
 
     useImperativeHandle(ref, () => ({
       zoomIn: () => {
@@ -53,8 +97,19 @@ const MapViewComponent = forwardRef(
       },
       recenter: () => {
         setIsUserInteracting(false);
-        setCurrentZoom(16);
-        if (currentLocation && cameraRef.current) {
+
+        if (coords.length > 1) {
+          // 🔥 kalau ada route → fit route
+          const lats = coords.map(c => c[1]);
+          const lngs = coords.map(c => c[0]);
+
+          cameraRef.current.fitBounds(
+            [Math.min(...lngs), Math.min(...lats)],
+            [Math.max(...lngs), Math.max(...lats)],
+            50,
+            1000,
+          );
+        } else if (currentLocation) {
           cameraRef.current.setCamera({
             centerCoordinate: currentLocation,
             zoomLevel: 16,
@@ -64,7 +119,6 @@ const MapViewComponent = forwardRef(
       },
     }));
 
-    // Logic Loading Izin
     if (!hasPermission) {
       return (
         <View
@@ -113,21 +167,20 @@ const MapViewComponent = forwardRef(
 
         <MapLibreGL.MapView
           style={{ flex: 1 }}
-          // 🔥 GANTI STYLE SECARA DINAMIS
           mapStyle={isDark ? DARK_STYLE : LIGHT_STYLE}
           logoEnabled={false}
           attributionEnabled={false}
-          onPress={() => setIsUserInteracting(true)}
+          onRegionWillChange={() => setIsUserInteracting(true)}
         >
           <MapLibreGL.Camera
             ref={cameraRef}
             zoomLevel={currentZoom}
             centerCoordinate={currentLocation || [0, 0]}
-            followUserLocation={!isUserInteracting}
             animationMode="flyTo"
             animationDuration={1500}
           />
 
+          {/* 🔥 USER DOT */}
           {currentLocation && (
             <MapLibreGL.PointAnnotation
               id="user-pos"
@@ -139,15 +192,17 @@ const MapViewComponent = forwardRef(
             </MapLibreGL.PointAnnotation>
           )}
 
-          {coords.length > 1 && (
+          {/* 🔥 POLYLINE */}
+          {coords && coords.length > 1 && (
             <MapLibreGL.ShapeSource
+              key={coords.length}
               id="routeSource"
               shape={{
                 type: 'Feature',
                 properties: {},
                 geometry: {
                   type: 'LineString',
-                  coordinates: coords.map(c => [c.longitude, c.latitude]),
+                  coordinates: coords,
                 },
               }}
             >
@@ -156,6 +211,7 @@ const MapViewComponent = forwardRef(
                 style={{
                   lineColor: '#FC4C02',
                   lineWidth: 6,
+                  lineOpacity: 0.9,
                   lineJoin: 'round',
                   lineCap: 'round',
                 }}

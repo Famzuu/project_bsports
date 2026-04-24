@@ -112,7 +112,7 @@ android {
                 minifyEnabled true
                 shrinkResources true   // 🔥 tambahkan ini
 
-                proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+                proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             }
     }
 }
@@ -120,7 +120,6 @@ android {
 dependencies {
     implementation("com.facebook.react:react-android")
 
-    // TAMBAHKAN BARIS INI:
     implementation "com.google.android.gms:play-services-location:21.0.1"
 
     if (hermesEnabled.toBoolean()) {
