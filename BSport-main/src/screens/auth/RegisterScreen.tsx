@@ -80,7 +80,7 @@ export default function RegisterScreen({ navigation }: any) {
           <View style={styles.headerSection}>
             <Text style={styles.title}>DAFTAR AKUN</Text>
             <Text style={styles.subtitle}>
-              Bergabunglah dengan komunitas B-SPORT
+              Bergabunglah dengan komunitas B-SPORTS
             </Text>
           </View>
 
