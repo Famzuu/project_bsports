@@ -193,31 +193,32 @@ const MapViewComponent = forwardRef(
           )}
 
           {/* 🔥 POLYLINE */}
+          {/* 🔥 POLYLINE */}
           {coords && coords.length > 1 && (
             <MapLibreGL.ShapeSource
-              key={coords.length}
-              id="routeSource"
+              id="routeSource" // ✅ Biarkan tanpa properti "key"
               shape={{
                 type: 'Feature',
                 properties: {},
                 geometry: {
                   type: 'LineString',
-                  coordinates: coords,
+                  coordinates: coords, // MapLibre akan otomatis mendeteksi perubahan array ini
                 },
               }}
             >
               <MapLibreGL.LineLayer
                 id="routeLine"
                 style={{
-                  lineColor: '#FC4C02',
+                  lineColor: '#FC4C02', // Warna Strava
                   lineWidth: 6,
                   lineOpacity: 0.9,
-                  lineJoin: 'round',
-                  lineCap: 'round',
+                  lineJoin: 'round', // Tikungan halus
+                  lineCap: 'round', // Ujung membulat
                 }}
               />
             </MapLibreGL.ShapeSource>
           )}
+          
         </MapLibreGL.MapView>
       </View>
     );

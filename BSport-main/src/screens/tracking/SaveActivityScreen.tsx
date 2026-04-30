@@ -26,12 +26,17 @@ import { styles } from '../../style/SaveActivityStyle';
 export default function SaveActivityScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
-  const { activityId } = route.params;
+  
+  // 🔥 TANGKAP initialSportType DARI TRACKING SCREEN
+  const { activityId, initialSportType } = route.params;
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [sportType, setSportType] = useState('run');
+  
+  // 🔥 SET DEFAULT VALUE SESUAI PILIHAN DI AWAL
+  const [sportType, setSportType] = useState(initialSportType || 'run'); 
   const [loading, setLoading] = useState(false);
+
 
   const handleSave = async () => {
     console.log('ACTIVITY ID:', activityId);

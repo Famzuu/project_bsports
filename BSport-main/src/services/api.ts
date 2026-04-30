@@ -4,7 +4,7 @@ import { BASE_URL } from '../config/env'; // import dari env
 
 const api = axios.create({
   baseURL: `${BASE_URL}/api`,
-  timeout: 10000,
+  timeout: 30000,
   headers: {
     Accept: 'application/json',
   },

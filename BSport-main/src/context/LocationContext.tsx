@@ -17,62 +17,59 @@ const LocationContext = createContext<LocationState | null>(null);
 export const LocationProvider = ({ children }: any) => {
   const [location, setLocation] = useState<LocationState | null>(null);
 
-  const requestLocationPermission = async () => {
-    try {
+  useEffect(() => {
+    let watchId: number;
+
+    const startWatching = async () => {
       const permission =
         Platform.OS === 'android'
           ? PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION
           : PERMISSIONS.IOS.LOCATION_WHEN_IN_USE;
 
       const result = await request(permission);
-      
-      // Jika di-allow, kembalikan true
-      if (result === RESULTS.GRANTED) {
-        return true;
+
+      if (result !== RESULTS.GRANTED) {
+        Alert.alert(
+          'Izin Ditolak',
+          'Aplikasi membutuhkan akses GPS untuk melacak rute.'
+        );
+        return;
       }
 
-      // Jika ditolak, beri tahu user
-      Alert.alert(
-        'Izin Ditolak',
-        'Aplikasi membutuhkan akses GPS untuk melacak rute lari Anda.'
+      watchId = Geolocation.watchPosition(
+        position => {
+          const acc = position.coords.accuracy;
+
+          let status: GPSStatus = 'good';
+          if (acc > 20) status = 'weak';
+
+          setLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: acc,
+            status,
+          });
+        },
+        error => {
+          console.log('GPS Error:', error);
+          setLocation(prev => prev ? { ...prev, status: 'error' } : null);
+        },
+        {
+          enableHighAccuracy: true,
+          distanceFilter: 1,
+          interval: 2000,
+          fastestInterval: 1000,
+        }
       );
-      return false;
-    } catch (err) {
-      console.warn('Error saat request permission:', err);
-      return false;
-    }
-  };
+    };
 
-  const fetchInitialLocation = async () => {
-    const hasPermission = await requestLocationPermission();
-    
-    if (!hasPermission) return;
+    startWatching();
 
-    // 🔥 Tembak GPS setelah izin dipastikan didapat
-    Geolocation.getCurrentPosition(
-      position => {
-        setLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: position.coords.accuracy,
-          status: 'good',
-        });
-      },
-      error => {
-        console.log('Error Initial GPS:', error);
-        // Coba lagi jika error (misal GPS baru dinyalakan user)
-        setTimeout(fetchInitialLocation, 3000); 
-      },
-      { 
-        enableHighAccuracy: true, 
-        timeout: 15000, 
-        maximumAge: 10000 // Gunakan cache 10 detik agar lebih cepat
+    return () => {
+      if (watchId !== undefined) {
+        Geolocation.clearWatch(watchId);
       }
-    );
-  };
-
-  useEffect(() => {
-    fetchInitialLocation();
+    };
   }, []);
 
   return (

@@ -9,6 +9,9 @@ import TrackingScreen from '../screens/tracking/TrackingScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import MainLayout from '../layouts/MainLayout';
 import SaveActivityScreen from '../screens/tracking/SaveActivityScreen';
+import EventScreen from '../screens/event/EventScreen';
+import EventDetailScreen from '../screens/event/EventDetailScreen';
+import HistoryScreen from '../screens/history/HistoryScreen';
 
 // Import Screens - Auth
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -38,7 +41,11 @@ export type RootStackParamList = {
   AdminCreateEvent: undefined;
   AdminParticipants: { eventId: number };
 
-  SaveActivityScreen: { activityId: number }; // 🔥 TAMBAHKAN
+  SaveActivityScreen: { activityId: number };
+  EventDetail: { event: any };
+  EventScreen: undefined;
+
+  HistoryScreen: undefined;
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -86,7 +93,10 @@ export default function AppNavigator() {
         {token ? (
           <>
             <Stack.Screen name="Main" component={MainTabs} />
+            <Stack.Screen name='EventScreen' component={EventScreen} />
+            <Stack.Screen name="EventDetail" component={EventDetailScreen} />
             <Stack.Screen name="AdminEventList" component={AdminEventList} />
+            <Stack.Screen name="HistoryScreen" component={HistoryScreen} />
             <Stack.Screen
               name="AdminCreateEvent"
               component={AdminCreateEvent}

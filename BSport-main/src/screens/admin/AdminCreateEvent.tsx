@@ -10,6 +10,8 @@ import {
   ScrollView,
   Switch,
   ActivityIndicator,
+  Image,
+  StyleSheet,
 } from 'react-native';
 import {
   ChevronLeft,
@@ -20,14 +22,16 @@ import {
   Calendar,
   Activity,
   Check,
+  UploadCloud,
 } from 'lucide-react-native';
+import ImagePicker from 'react-native-image-crop-picker';
+import DatePicker from 'react-native-date-picker';
 import api from '../../services/api';
-import { useAuthStore } from '../../store/useAuthStore'; // Import Store
+import { useAuthStore } from '../../store/useAuthStore';
 import { getStyles } from '../../style/CreateEventStyle';
 import { darkTheme, lightTheme } from '../../context/ThemeContext';
 
 export default function AdminCreateEvent({ navigation }: any) {
-  // State Form
   const [namaEvent, setNamaEvent] = useState('');
   const [deskripsi, setDeskripsi] = useState('');
   const [targetJarak, setTargetJarak] = useState('');
@@ -35,45 +39,92 @@ export default function AdminCreateEvent({ navigation }: any) {
   const [status, setStatus] = useState('upcoming');
   const [statusAktif, setStatusAktif] = useState(true);
 
-  // State Tema Dinamis
+  const [imageObj, setImageObj] = useState<any>(null);
+
+  const [jadwalStart, setJadwalStart] = useState(new Date());
+  const [jadwalSelesai, setJadwalSelesai] = useState(
+    new Date(Date.now() + 86400000),
+  );
+  const [openStartPicker, setOpenStartPicker] = useState(false);
+  const [openEndPicker, setOpenEndPicker] = useState(false);
+
   const isDarkMode = useAuthStore(state => state.isDarkMode);
   const styles = getStyles(isDarkMode);
   const THEME = isDarkMode ? darkTheme : lightTheme;
-
-  const [jadwalStart, setJadwalStart] = useState(
-    new Date().toISOString().slice(0, 19).replace('T', ' '),
-  );
-  const [jadwalSelesai, setJadwalSelesai] = useState(
-    new Date(Date.now() + 86400000)
-      .toISOString()
-      .slice(0, 19)
-      .replace('T', ' '),
-  );
   const [isLoading, setIsLoading] = useState(false);
 
+  const formatTanggalUI = (date: Date) => {
+    return date.toLocaleString('id-ID', {
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const formatTanggalDB = (date: Date) => {
+    const tzOffset = date.getTimezoneOffset() * 60000;
+    return new Date(date.getTime() - tzOffset)
+      .toISOString()
+      .slice(0, 19)
+      .replace('T', ' ');
+  };
+
+  // 🔥 1. UBAH GAMBAR JADI TEKS (BASE64)
+  const handlePickImage = () => {
+    ImagePicker.openPicker({
+      width: 800,
+      height: 400,
+      cropping: true,
+      compressImageQuality: 0.7,
+      mediaType: 'photo',
+      forceJpg: true,
+      includeBase64: true, // INI KUNCI UTAMANYA!
+    })
+      .then(image => {
+        setImageObj({
+          uri: image.path, // Untuk preview di layar HP
+          base64: `data:${image.mime};base64,${image.data}`, // Teks gambar untuk dikirim ke Laravel
+        });
+      })
+      .catch(err => console.log('Batal pilih gambar', err));
+  };
+
+  // 🔥 2. KIRIM SEBAGAI JSON BIASA (TIDAK PAKAI FORMDATA)
   const handleCreate = async () => {
     if (!namaEvent || !targetJarak || !jadwalStart || !jadwalSelesai) {
-      Alert.alert('Attention', 'Please fill in all required fields.');
+      Alert.alert('Perhatian', 'Harap isi semua kolom wajib (*).');
       return;
     }
     setIsLoading(true);
+
     try {
+      // Kita bungkus jadi objek JSON biasa, bukan FormData
       const payload = {
         nama_event: namaEvent,
         tipe_lomba: tipeLomba,
-        target_jarak: parseFloat(targetJarak),
-        deskripsi: deskripsi || null,
+        target_jarak: targetJarak,
+        deskripsi: deskripsi || '',
         status: status,
-        jadwal_start: jadwalStart,
-        jadwal_selesai: jadwalSelesai,
-        status_aktif: statusAktif,
+        jadwal_start: formatTanggalDB(jadwalStart),
+        jadwal_selesai: formatTanggalDB(jadwalSelesai),
+        status_aktif: statusAktif ? 1 : 0,
+        image_base64: imageObj ? imageObj.base64 : null, // Kirim gambar berupa teks!
       };
-      await api.post('/events', payload);
-      Alert.alert('Success', 'Event has been published.', [
-        { text: 'Done', onPress: () => navigation.goBack() },
+
+      await api.post('/events', payload); // Axios akan otomatis mengirim sebagai application/json
+
+      Alert.alert('Sukses', 'Event berhasil dipublish.', [
+        { text: 'Selesai', onPress: () => navigation.goBack() },
       ]);
     } catch (err: any) {
-      Alert.alert('Failed', err.response?.data?.message || 'Server error.');
+      console.log('ERROR:', err?.response?.data || err.message);
+      Alert.alert(
+        'Gagal',
+        err?.response?.data?.message || 'Gagal mengupload data',
+      );
     } finally {
       setIsLoading(false);
     }
@@ -82,7 +133,6 @@ export default function AdminCreateEvent({ navigation }: any) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -97,9 +147,34 @@ export default function AdminCreateEvent({ navigation }: any) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
+        {/* EVENT BANNER */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Event Banner</Text>
+          <TouchableOpacity
+            style={localStyles.imageUploadBox}
+            onPress={handlePickImage}
+          >
+            {imageObj ? (
+              <Image
+                source={{ uri: imageObj.uri }}
+                style={localStyles.previewImage}
+              />
+            ) : (
+              <View style={localStyles.uploadPlaceholder}>
+                <UploadCloud size={40} color={THEME.ACCENT} />
+                <Text
+                  style={[localStyles.uploadText, { color: THEME.TEXT_SUB }]}
+                >
+                  Tap to upload & crop (2:1)
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* BASIC INFORMATION */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Basic Information</Text>
-
           <InputLabel
             icon={<Type size={16} color={THEME.ACCENT} />}
             label="Event Name"
@@ -113,7 +188,6 @@ export default function AdminCreateEvent({ navigation }: any) {
             value={namaEvent}
             onChangeText={setNamaEvent}
           />
-
           <InputLabel
             icon={<AlignLeft size={16} color={THEME.ACCENT} />}
             label="Description"
@@ -127,7 +201,6 @@ export default function AdminCreateEvent({ navigation }: any) {
             onChangeText={setDeskripsi}
             multiline
           />
-
           <InputLabel
             icon={<MapPin size={16} color={THEME.ACCENT} />}
             label="Target (KM)"
@@ -144,6 +217,7 @@ export default function AdminCreateEvent({ navigation }: any) {
           />
         </View>
 
+        {/* EVENT CONFIGURATION */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Event Configuration</Text>
           <InputLabel
@@ -165,7 +239,6 @@ export default function AdminCreateEvent({ navigation }: any) {
               styles={styles}
             />
           </View>
-
           <InputLabel
             icon={<Activity size={16} color={THEME.ACCENT} />}
             label="Status"
@@ -184,6 +257,7 @@ export default function AdminCreateEvent({ navigation }: any) {
           </View>
         </View>
 
+        {/* TIMELINE & VISIBILITY */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Timeline & Visibility</Text>
           <InputLabel
@@ -192,10 +266,25 @@ export default function AdminCreateEvent({ navigation }: any) {
             required
             theme={THEME}
           />
-          <TextInput
-            style={styles.input}
-            value={jadwalStart}
-            onChangeText={setJadwalStart}
+          <TouchableOpacity
+            style={localStyles.dateButton}
+            onPress={() => setOpenStartPicker(true)}
+          >
+            <Text style={{ color: THEME.TEXT_MAIN, fontSize: 15 }}>
+              {formatTanggalUI(jadwalStart)}
+            </Text>
+          </TouchableOpacity>
+          <DatePicker
+            modal
+            open={openStartPicker}
+            date={jadwalStart}
+            mode="datetime"
+            locale="id-ID"
+            onConfirm={date => {
+              setOpenStartPicker(false);
+              setJadwalStart(date);
+            }}
+            onCancel={() => setOpenStartPicker(false)}
           />
 
           <InputLabel
@@ -204,10 +293,26 @@ export default function AdminCreateEvent({ navigation }: any) {
             required
             theme={THEME}
           />
-          <TextInput
-            style={styles.input}
-            value={jadwalSelesai}
-            onChangeText={setJadwalSelesai}
+          <TouchableOpacity
+            style={localStyles.dateButton}
+            onPress={() => setOpenEndPicker(true)}
+          >
+            <Text style={{ color: THEME.TEXT_MAIN, fontSize: 15 }}>
+              {formatTanggalUI(jadwalSelesai)}
+            </Text>
+          </TouchableOpacity>
+          <DatePicker
+            modal
+            open={openEndPicker}
+            date={jadwalSelesai}
+            mode="datetime"
+            locale="id-ID"
+            minimumDate={jadwalStart}
+            onConfirm={date => {
+              setOpenEndPicker(false);
+              setJadwalSelesai(date);
+            }}
+            onCancel={() => setOpenEndPicker(false)}
           />
 
           <View style={styles.switchRow}>
@@ -246,7 +351,6 @@ export default function AdminCreateEvent({ navigation }: any) {
   );
 }
 
-// Sub-components
 const InputLabel = ({ icon, label, required, theme }: any) => (
   <View
     style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}
@@ -276,3 +380,31 @@ const SegmentBtn = ({ active, label, onPress, styles }: any) => (
     </Text>
   </TouchableOpacity>
 );
+
+const localStyles = StyleSheet.create({
+  dateButton: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: '#F9FAFB',
+    marginBottom: 20,
+  },
+  imageUploadBox: {
+    width: '100%',
+    height: 160,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#D1D5DB',
+    backgroundColor: '#F9FAFB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    marginBottom: 10,
+  },
+  previewImage: { width: '100%', height: '100%', resizeMode: 'cover' },
+  uploadPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  uploadText: { marginTop: 8, fontSize: 14, fontWeight: '500' },
+});
