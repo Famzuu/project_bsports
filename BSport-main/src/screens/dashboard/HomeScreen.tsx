@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,25 +6,28 @@ import {
   StatusBar,
   ScrollView,
   Image,
-  Alert,
   RefreshControl,
   Dimensions,
-  StyleSheet,
-  Platform
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import {
-  Calendar, Search, Activity, Flame, Timer, Play, MapPin,
-  CircleUser, Footprints,
+  Search,
+  Flame,
+  Timer,
+  MapPin,
+  CircleUser,
+  Footprints,
 } from 'lucide-react-native';
+import LottieView from 'lottie-react-native';
 
 import api from '../../services/api';
 import { RootTabParamList } from '../../navigation/AppNavigator';
 
-// Import Map & Utils
+// Import Map, Utils, & Styles (Sesuaikan path-nya jika perlu)
 import MapViewComponent from '../../components/MapViewComponent';
 import { formatTime } from '../../utils/trackingMath';
+import { styles } from '../../style/HomeStyle';
 
 const { width } = Dimensions.get('window');
 type NavigationProp = BottomTabNavigationProp<RootTabParamList, 'Home'>;
@@ -34,9 +37,13 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [latestActivity, setLatestActivity] = useState<any>(null);
 
-  // ==========================================
-  // FORMATTING (PACE)
-  // ==========================================
+  const [events, setEvents] = useState<any[]>([]);
+  const scrollRef = useRef<ScrollView>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  // 🔥 1. State untuk menyimpan nama user (Default: Sporty)
+  const [userName, setUserName] = useState<string>('Sporty');
+
   const formatPace = (pace: number, distance?: number) => {
     if (!pace || !distance) return '--:--';
     if (distance < 0.1) return '--:--';
@@ -47,9 +54,22 @@ export default function HomeScreen() {
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
-  // ==========================================
-  // FETCH LOGIC
-  // ==========================================
+  // 🔥 2. Fungsi untuk mengambil data User
+  const fetchUser = async () => {
+    try {
+      const response = await api.get('/user'); // Endpoint default dari Laravel Sanctum
+      const userData = response.data?.data || response.data; // Handle struktur response
+      
+      if (userData && userData.name) {
+        // Kita ambil nama depan saja agar tampilan header tetap rapi
+        const firstName = userData.name.split(' ')[0];
+        setUserName(firstName);
+      }
+    } catch (error) {
+      console.log('Error fetching user:', error);
+    }
+  };
+
   const fetchLatestActivity = async () => {
     try {
       const response = await api.get('/activities');
@@ -63,103 +83,205 @@ export default function HomeScreen() {
     }
   };
 
+  const fetchEvents = async () => {
+    try {
+      const response = await api.get('/events');
+      if (response.data?.data) {
+        setEvents(response.data.data.slice(0, 5));
+      }
+    } catch (error) {
+      console.log('Error fetching events:', error);
+    }
+  };
+
+  // 🔥 3. Panggil fetchUser di useFocusEffect
   useFocusEffect(
     useCallback(() => {
+      fetchUser();
       fetchLatestActivity();
-    }, [])
+      fetchEvents();
+    }, []),
   );
 
+  // 🔥 4. Tambahkan fetchUser ke onRefresh
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    await fetchUser();
     await fetchLatestActivity();
+    await fetchEvents();
     setRefreshing(false);
   }, []);
 
+  useEffect(() => {
+    if (events.length === 0) return;
+
+    const timer = setInterval(() => {
+      const nextIndex = (activeIndex + 1) % events.length;
+      setActiveIndex(nextIndex);
+      scrollRef.current?.scrollTo({ x: nextIndex * width, animated: true });
+    }, 3000);
+
+    return () => clearInterval(timer);
+  }, [activeIndex, events.length]);
+
   const renderBanner = () => {
-    const banners = [
-      'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=1000&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=1000&auto=format&fit=crop'
-    ];
+    if (events.length === 0) return null;
 
     return (
-      <View style={localStyles.bannerContainer}>
-        <ScrollView 
-          horizontal 
-          pagingEnabled 
+      <View style={styles.bannerContainer}>
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 16, paddingHorizontal: 16 }}
+          onMomentumScrollEnd={e => {
+            const contentOffsetX = e.nativeEvent.contentOffset.x;
+            const currentIndex = Math.round(contentOffsetX / width);
+            setActiveIndex(currentIndex);
+          }}
         >
-          {banners.map((img, index) => (
-            <View key={index} style={localStyles.bannerWrapper}>
-              <Image source={{ uri: img }} style={localStyles.bannerImage} />
-              <View style={localStyles.bannerOverlay}>
-                <Text style={localStyles.bannerTitle}>B'Sports Virtual Run 2026</Text>
-                <Text style={localStyles.bannerSubtitle}>Daftar sekarang dan menangkan medali eksklusif!</Text>
-              </View>
+          {events.map((evt, index) => (
+            <View key={index} style={{ width, paddingHorizontal: 16 }}>
+              <TouchableOpacity
+                activeOpacity={0.9}
+                style={styles.bannerWrapper}
+                onPress={() =>
+                  navigation.navigate('EventDetail' as any, { event: evt })
+                }
+              >
+                <Image
+                  source={{
+                    uri:
+                      evt.image_url ||
+                      'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=1000&auto=format&fit=crop',
+                  }}
+                  style={styles.bannerImage}
+                />
+                <View style={styles.bannerOverlay}>
+                  <Text style={styles.bannerTitle} numberOfLines={1}>
+                    {evt.nama_event}
+                  </Text>
+                  <Text style={styles.bannerSubtitle} numberOfLines={1}>
+                    {evt.target_jarak} KM • {evt.tipe_lomba.toUpperCase()}
+                  </Text>
+                </View>
+              </TouchableOpacity>
             </View>
           ))}
         </ScrollView>
+
+        <View style={styles.dotContainer}>
+          {events.map((_, index) => (
+            <View
+              key={index}
+              style={[styles.dot, activeIndex === index && styles.dotActive]}
+            />
+          ))}
+        </View>
       </View>
     );
   };
 
   const renderQuickMenus = () => {
     const menus = [
-      { id: 1, name: 'Profile', icon: CircleUser, color: '#F8AD3C', route: 'Profile' },
-      { id: 2, name: 'History', icon: Activity, color: '#EF4444', route: 'HistoryScreen' },
-      { id: 3, name: 'Events', icon: Calendar, color: '#10B981', route: 'EventScreen' },
-      { id: 4, name: 'Tracking', icon: Play, color: '#3B82F6', route: 'Tracking' },
+      {
+        id: 1,
+        name: 'Profile',
+        lottie: require('../../assets/lottie/user.json'),
+        color: '#F8AD3C',
+        route: 'Profile',
+        size: 45,
+        translateY: 0,
+      },
+      {
+        id: 2,
+        name: 'History',
+        lottie: require('../../assets/lottie/chart.json'),
+        color: '#EF4444',
+        route: 'HistoryScreen',
+        size: 65,
+        translateY: -2,
+      },
+      {
+        id: 3,
+        name: 'Events',
+        lottie: require('../../assets/lottie/trophy.json'),
+        color: '#10B981',
+        route: 'EventScreen',
+        size: 60,
+        translateY: -5,
+      },
+      {
+        id: 4,
+        name: 'Tracking',
+        lottie: require('../../assets/lottie/tracking.json'),
+        color: '#3B82F6',
+        route: 'Tracking',
+        size: 58,
+        translateY: -1,
+      },
     ];
 
     return (
-      <View style={localStyles.menuGrid}>
-        {menus.map((menu) => {
-          const IconComponent = menu.icon;
-          return (
-            <TouchableOpacity 
-              key={menu.id} 
-              style={localStyles.menuItem}
-              onPress={() => navigation.navigate(menu.route as any)}
-              activeOpacity={0.7}
+      <View style={styles.menuGrid}>
+        {menus.map(menu => (
+          <TouchableOpacity
+            key={menu.id}
+            style={styles.menuItem}
+            onPress={() => navigation.navigate(menu.route as any)}
+            activeOpacity={0.7}
+          >
+            <View
+              style={[
+                styles.menuIconWrapper,
+                { backgroundColor: `${menu.color}15` },
+              ]}
             >
-              <View style={[localStyles.menuIconWrapper, { backgroundColor: `${menu.color}15` }]}>
-                <IconComponent size={28} color={menu.color} strokeWidth={2.5} />
-              </View>
-              <Text style={localStyles.menuText}>{menu.name}</Text>
-            </TouchableOpacity>
-          );
-        })}
+              <LottieView
+                source={menu.lottie}
+                autoPlay
+                loop
+                style={{
+                  width: menu.size,
+                  height: menu.size,
+                  transform: [{ translateY: menu.translateY }],
+                }}
+              />
+            </View>
+            <Text style={styles.menuText}>{menu.name}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
     );
   };
 
   const renderDailyDashboard = () => (
-    <View style={localStyles.dashboardWrapper}>
-      <Text style={localStyles.sectionTitle}>Ringkasan Hari Ini</Text>
-      <View style={localStyles.dashboardGrid}>
-        <TouchableOpacity style={localStyles.mainDashboardCard}>
-          <View style={localStyles.dashboardIconBg}>
+    <View style={styles.dashboardWrapper}>
+      <Text style={styles.sectionTitle}>Ringkasan Hari Ini</Text>
+      <View style={styles.dashboardGrid}>
+        <TouchableOpacity style={styles.mainDashboardCard}>
+          <View style={styles.dashboardIconBg}>
             <MapPin size={22} color="#F8AD3C" />
           </View>
-          <Text style={localStyles.dashboardValue}>
-            12.4 <Text style={localStyles.dashboardUnit}>km</Text>
+          <Text style={styles.dashboardValue}>
+            12.4 <Text style={styles.dashboardUnit}>km</Text>
           </Text>
-          <Text style={localStyles.dashboardLabel}>Total Jarak</Text>
+          <Text style={styles.dashboardLabel}>Total Jarak</Text>
         </TouchableOpacity>
 
-        <View style={localStyles.dashboardSubGrid}>
-          <View style={localStyles.subDashboardCard}>
+        <View style={styles.dashboardSubGrid}>
+          <View style={styles.subDashboardCard}>
             <Flame size={18} color="#EF4444" />
             <View>
-              <Text style={localStyles.subDashboardValue}>840</Text>
-              <Text style={localStyles.subDashboardLabel}>Kcal Terbakar</Text>
+              <Text style={styles.subDashboardValue}>840</Text>
+              <Text style={styles.subDashboardLabel}>Kcal Terbakar</Text>
             </View>
           </View>
-          <View style={localStyles.subDashboardCard}>
+          <View style={styles.subDashboardCard}>
             <Timer size={18} color="#0284C7" />
             <View>
-              <Text style={localStyles.subDashboardValue}>1h 20m</Text>
-              <Text style={localStyles.subDashboardLabel}>Waktu Aktif</Text>
+              <Text style={styles.subDashboardValue}>1h 20m</Text>
+              <Text style={styles.subDashboardLabel}>Waktu Aktif</Text>
             </View>
           </View>
         </View>
@@ -167,23 +289,25 @@ export default function HomeScreen() {
     </View>
   );
 
-  // ==========================================
-  // LOGIKA POLYLINE FILTER
-  // ==========================================
-  let validPoints: [number, number][] = []; 
+  let validPoints: [number, number][] = [];
   let activityDistance = 0;
 
   if (latestActivity) {
-    activityDistance = Number(latestActivity.distance || latestActivity.total_distance || 0);
+    activityDistance = Number(
+      latestActivity.distance || latestActivity.total_distance || 0,
+    );
 
     if (latestActivity.points) {
       validPoints = latestActivity.points
-        .map((p: any) => [
-          Number(p.longitude || p.lng),
-          Number(p.latitude || p.lat),
-        ] as [number, number]) // 🔥 TAMBAHKAN "as [number, number]" DI SINI
+        .map(
+          (p: any) =>
+            [Number(p.longitude || p.lng), Number(p.latitude || p.lat)] as [
+              number,
+              number,
+            ],
+        )
         .filter((coord: [number, number]) => {
-          const isInvalid = isNaN(coord[0]) || isNaN(coord[1]);
+          const isInvalid = Number.isNaN(coord[0]) || Number.isNaN(coord[1]);
           const isNullIsland = Math.abs(coord[0]) < 1 && Math.abs(coord[1]) < 1;
           return !isInvalid && !isNullIsland;
         });
@@ -191,357 +315,124 @@ export default function HomeScreen() {
   }
 
   return (
-    <View style={localStyles.container}>
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      <View style={localStyles.header}>
+      <View style={styles.header}>
         <View>
-          <Text style={localStyles.headerGreeting}>Halo, Sporty!</Text>
-          <Text style={localStyles.headerTitle}>B-SPORT</Text>
+          {/* 🔥 5. Tampilkan nama user secara dinamis */}
+          <Text style={styles.headerGreeting}>Halo, {userName}!</Text>
+          <Text style={styles.headerTitle}>B-SPORT</Text>
         </View>
-        <TouchableOpacity style={localStyles.iconCircle}>
+        <TouchableOpacity style={styles.iconCircle}>
           <Search size={22} color="#111827" />
         </TouchableOpacity>
       </View>
 
       <ScrollView
-        contentContainerStyle={localStyles.scrollContent}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#F8AD3C']} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#F8AD3C']}
+          />
         }
       >
         {renderBanner()}
         {renderQuickMenus()}
         {renderDailyDashboard()}
 
-        {/* FEED AKTIVITAS TERBARU PENGGUNA */}
-        <View style={localStyles.feedWrapper}>
-          <View style={localStyles.sectionHeader}>
-            <Text style={localStyles.sectionTitle}>Aktivitas Terbaru</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('HistoryScreen' as any)}>
-              <Text style={localStyles.seeAllText}>Lihat History</Text>
+        <View style={styles.feedWrapper}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Aktivitas Terbaru</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('HistoryScreen' as any)}
+            >
+              <Text style={styles.seeAllText}>Lihat History</Text>
             </TouchableOpacity>
           </View>
-          
-          {!latestActivity ? (
-             <Text style={{ textAlign: 'center', color: '#6B7280', marginTop: 10 }}>Belum ada aktivitas baru-baru ini.</Text>
+
+          {latestActivity ? (
+            <View style={styles.activityCard}>
+              <View style={styles.activityHeader}>
+                <View style={styles.avatarCircle}>
+                  <CircleUser size={24} color="#FFF" />
+                </View>
+                <View style={{ marginLeft: 12 }}>
+                  <Text style={styles.activityTitle}>
+                    {latestActivity.title || 'Aktivitas Olahraga'}
+                  </Text>
+                  <Text style={styles.activityMeta}>
+                    {new Date(
+                      latestActivity.created_at || latestActivity.start_time,
+                    ).toLocaleDateString('id-ID')}{' '}
+                    • {latestActivity.sport_type}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.activityStatsRow}>
+                <View style={styles.statCol}>
+                  <Text style={styles.statLabel}>Jarak</Text>
+                  <Text style={styles.statValue}>
+                    {activityDistance.toFixed(2)} km
+                  </Text>
+                </View>
+                <View style={styles.statCol}>
+                  <Text style={styles.statLabel}>Pace</Text>
+                  <Text style={styles.statValue}>
+                    {formatPace(latestActivity.pace, activityDistance)} /km
+                  </Text>
+                </View>
+                <View style={styles.statCol}>
+                  <Text style={styles.statLabel}>Waktu</Text>
+                  <Text style={styles.statValue}>
+                    {formatTime(latestActivity.duration)}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.mapContainer}>
+                {validPoints.length > 1 ? (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                    }}
+                  >
+                    <MapViewComponent
+                      coords={validPoints}
+                      isDark={false}
+                      hasPermission={true}
+                      currentLocation={validPoints[validPoints.length - 1]}
+                    />
+                  </View>
+                ) : (
+                  <View style={styles.noMapContainer}>
+                    <Footprints size={40} color="#D1D5DB" />
+                    <Text style={{ color: '#9CA3AF', marginTop: 8 }}>
+                      {activityDistance < 0.2
+                        ? 'Jarak terlalu pendek untuk dipetakan'
+                        : 'Memuat rute GPS...'}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
           ) : (
-             <View style={localStyles.activityCard}>
-               {/* User Info & Title */}
-               <View style={localStyles.activityHeader}>
-                 <View style={localStyles.avatarCircle}>
-                   <CircleUser size={24} color="#FFF" />
-                 </View>
-                 <View style={{ marginLeft: 12 }}>
-                   <Text style={localStyles.activityTitle}>{latestActivity.title || "Aktivitas Olahraga"}</Text>
-                   <Text style={localStyles.activityMeta}>
-                     {new Date(latestActivity.created_at || latestActivity.start_time).toLocaleDateString('id-ID')} • {latestActivity.sport_type}
-                   </Text>
-                 </View>
-               </View>
-
-               {/* Stats: Distance, Pace, Time */}
-               <View style={localStyles.activityStatsRow}>
-                 <View style={localStyles.statCol}>
-                   <Text style={localStyles.statLabel}>Jarak</Text>
-                   <Text style={localStyles.statValue}>{activityDistance.toFixed(2)} km</Text>
-                 </View>
-                 <View style={localStyles.statCol}>
-                   <Text style={localStyles.statLabel}>Pace</Text>
-                   <Text style={localStyles.statValue}>{formatPace(latestActivity.pace, activityDistance)} /km</Text>
-                 </View>
-                 <View style={localStyles.statCol}>
-                   <Text style={localStyles.statLabel}>Waktu</Text>
-                   <Text style={localStyles.statValue}>{formatTime(latestActivity.duration)}</Text>
-                 </View>
-               </View>
-
-               {/* MAP / POLYLINE VIEWER */}
-               <View style={localStyles.mapContainer}>
-                 {validPoints.length > 1 ? (
-                   <View pointerEvents="none" style={StyleSheet.absoluteFill}> 
-                     <MapViewComponent
-                        coords={validPoints}
-                        isDark={false}
-                        hasPermission={true} // 🔥 Bebaskan dari load perizinan
-                        currentLocation={validPoints[validPoints.length - 1]} // 🔥 Fokus ke rute lari terakhir
-                     />
-                   </View>
-                 ) : (
-                   <View style={localStyles.noMapContainer}>
-                     <Footprints size={40} color="#D1D5DB" />
-                     <Text style={{ color: '#9CA3AF', marginTop: 8 }}>
-                       {activityDistance < 0.2 
-                          ? 'Jarak terlalu pendek untuk dipetakan' 
-                          : 'Memuat rute GPS...'}
-                     </Text>
-                   </View>
-                 )}
-               </View>
-             </View>
+            <Text
+              style={{ textAlign: 'center', color: '#6B7280', marginTop: 10 }}
+            >
+              Belum ada aktivitas baru-baru ini.
+            </Text>
           )}
         </View>
       </ScrollView>
     </View>
   );
 }
-
-// ==========================================
-// STYLES KHUSUS UNTUK HOME SCREEN BARU
-// ==========================================
-const localStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 15,
-    backgroundColor: '#FFFFFF',
-  },
-  headerGreeting: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 2,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: '#FC6100', // Strava Orange
-    letterSpacing: 1,
-  },
-  iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scrollContent: {
-    paddingBottom: 100,
-  },
-  
-  // Banner
-  bannerContainer: {
-    marginTop: 15,
-    marginBottom: 25,
-  },
-  bannerWrapper: {
-    width: width - 32,
-    height: 160,
-    borderRadius: 16,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  bannerImage: {
-    width: '100%',
-    height: '100%',
-  },
-  bannerOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 15,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  bannerTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  bannerSubtitle: {
-    color: '#E5E7EB',
-    fontSize: 12,
-    marginTop: 4,
-  },
-
-  // Menus
-  menuGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginBottom: 30,
-  },
-  menuItem: {
-    alignItems: 'center',
-    width: (width - 40) / 4,
-  },
-  menuIconWrapper: {
-    width: 56,
-    height: 56,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  menuText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#374151',
-  },
-
-  // Dashboard Summary
-  dashboardWrapper: {
-    paddingHorizontal: 20,
-    marginBottom: 30,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  dashboardGrid: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  mainDashboardCard: {
-    flex: 1,
-    backgroundColor: '#111827',
-    borderRadius: 20,
-    padding: 20,
-    justifyContent: 'center',
-  },
-  dashboardIconBg: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(248, 173, 60, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  dashboardValue: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: '#FFFFFF',
-  },
-  dashboardUnit: {
-    fontSize: 16,
-    color: '#9CA3AF',
-    fontWeight: '600',
-  },
-  dashboardLabel: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    marginTop: 4,
-  },
-  dashboardSubGrid: {
-    flex: 1,
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  subDashboardCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-  },
-  subDashboardValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#111827',
-  },
-  subDashboardLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-
-  // FEED STYLES (Pengganti Event Mendatang)
-  feedWrapper: {
-    paddingHorizontal: 20,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  seeAllText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FC6100', // Strava Orange
-  },
-  activityCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    marginBottom: 20,
-  },
-  activityHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  avatarCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FC6100',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  activityTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#111827',
-  },
-  activityMeta: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
-    textTransform: 'capitalize',
-  },
-  activityStatsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  statCol: {
-    flex: 1,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#111827',
-  },
-  mapContainer: {
-    height: 180,
-    width: '100%',
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#F3F4F6',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  noMapContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#E5E7EB',
-  }
-});

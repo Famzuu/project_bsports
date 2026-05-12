@@ -2,6 +2,7 @@ import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 import { BASE_URL } from '../config/env'; // import dari env
 
+console.log('BASE URL SAYA ADALAH:', BASE_URL);
 const api = axios.create({
   baseURL: `${BASE_URL}/api`,
   timeout: 30000,

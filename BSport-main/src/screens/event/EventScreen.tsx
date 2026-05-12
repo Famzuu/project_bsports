@@ -10,17 +10,20 @@ import {
   StatusBar,
   ActivityIndicator,
   RefreshControl,
-  Platform, // 🔥 Tambahkan Platform
+  Platform,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { ChevronLeft, Trophy, Calendar, MapPin, Users } from 'lucide-react-native';
+import { ChevronLeft, Trophy, Calendar, MapPin, Users, Plus } from 'lucide-react-native';
 import api from '../../services/api';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export default function EventScreen() {
   const navigation = useNavigation<any>();
   const [events, setEvents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  const user = useAuthStore((state: any) => state.user);
 
   const fetchEvents = async () => {
     try {
@@ -94,11 +97,31 @@ export default function EventScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        {/* Tombol Back dengan zIndex agar bisa diklik dengan baik */}
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { zIndex: 10 }]}>
           <ChevronLeft size={28} color="#111827" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Daftar Event</Text>
-        <View style={{ width: 28 }} />
+
+        {/* 🔥 Judul dibuat absolute dan berada di atas background (tapi tak bisa diklik berkat pointerEvents="none") */}
+        <View pointerEvents="none" style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>Daftar Event</Text>
+        </View>
+        
+        {/* Tombol Buat Event dengan zIndex */}
+        <View style={{ zIndex: 10 }}>
+          {user?.jabatan_id === 1 ? (
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('AdminCreateEvent')} 
+              style={styles.createBtn}
+              activeOpacity={0.8}
+            >
+              <Plus size={18} color="#FFFFFF" strokeWidth={2.5} />
+              <Text style={styles.createBtnText}>New</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={{ width: 40 }} />
+          )}
+        </View>
       </View>
 
       {isLoading ? (
@@ -131,7 +154,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
-    // 🔥 PERBAIKAN: Menambahkan padding atas setinggi status bar Android
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0, 
   },
   header: {
@@ -139,18 +161,50 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 12,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
+    position: 'relative',
   },
   backBtn: {
     padding: 4,
+  },
+  // 🔥 Perbaikan utama ada di sini
+  headerTitleContainer: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1, // Mengubah -1 menjadi 1 agar tampil di atas background header
+    elevation: 1, // Khusus untuk Android
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#111827',
+  },
+  createBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FC6100', 
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20, 
+    gap: 4,
+    elevation: 2, 
+    shadowColor: '#FC6100', 
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  createBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   listContainer: {
     padding: 16,

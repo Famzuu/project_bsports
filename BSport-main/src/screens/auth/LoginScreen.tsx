@@ -33,7 +33,12 @@ export default function LoginScreen({ navigation }: any) {
       const response = await api.post('/login', { email, password });
       const { access_token, user } = response.data;
       setAuth(access_token, user);
-    } catch (error: any) {
+    }  catch (error: any) { // <--- Tambahkan : any di sini
+      console.log('ERROR LENGKAP LOGIN:', error.message);
+      if (error.response) {
+        console.log('DATA DARI SERVER:', error.response.data);
+      }
+
       Alert.alert(
         'Login Gagal',
         error.response?.data?.message || 'Email atau password salah.',

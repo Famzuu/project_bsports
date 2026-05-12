@@ -50,9 +50,11 @@ export default function HistoryScreen() {
     try {
       setLoading(true);
       const res = await api.get('/activities');
-      
+
       // Ambil yang statusnya selesai
-      const filtered = res.data.data.filter((item: any) => item.status === 'finished');
+      const filtered = res.data.data.filter(
+        (item: any) => item.status === 'finished',
+      );
       setActivities(filtered);
 
       // Fetch points untuk polyline masing-masing aktivitas
@@ -69,7 +71,7 @@ export default function HistoryScreen() {
   const fetchPoints = async (actId: number) => {
     try {
       const res = await api.get(`/activities/${actId}/points`);
-      
+
       // Pastikan parse koordinat sebagai angka agar map tidak crash
       const mapped = res.data.data.map((p: any) => [
         Number(p.longitude || p.lng),
@@ -117,7 +119,9 @@ export default function HistoryScreen() {
             <CircleUser size={24} color="#FFF" />
           </View>
           <View style={{ marginLeft: 12 }}>
-            <Text style={styles.activityTitle}>{item.title || 'Aktivitas Olahraga'}</Text>
+            <Text style={styles.activityTitle}>
+              {item.title || 'Aktivitas Olahraga'}
+            </Text>
             <Text style={styles.activityMeta}>
               {dateString} • {item.sport_type}
             </Text>
@@ -134,26 +138,26 @@ export default function HistoryScreen() {
           </View>
           <View style={styles.statCol}>
             <Text style={styles.statLabel}>Pace</Text>
-            <Text style={styles.statValue}>{formatPace(item.pace, item.distance)} /km</Text>
+            <Text style={styles.statValue}>
+              {formatPace(item.pace, item.distance)} /km
+            </Text>
           </View>
           <View style={styles.statCol}>
             <Text style={styles.statLabel}>Waktu</Text>
-            <Text style={styles.statValue}>{formatDuration(item.duration)}</Text>
+            <Text style={styles.statValue}>
+              {formatDuration(item.duration)}
+            </Text>
           </View>
         </View>
 
         {/* Map / Polyline Area */}
         <View style={styles.mapContainer}>
           {pointsMap[item.act_id] && pointsMap[item.act_id].length > 0 ? (
-            <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+            <View style={StyleSheet.absoluteFill}>
               <MapViewComponent
                 coords={pointsMap[item.act_id]}
                 isDark={false}
-                
-                // 🔥 UBAH KEMBALI JADI TRUE AGAR MAP LANGSUNG TAMPIL TANPA LOADING IZIN
-                hasPermission={true} 
-                
-                // 🔥 LOKASI FOKUS KE TITIK TERAKHIR RUTE AGAR TIDAK MENCARI GPS LIVE
+                hasPermission={true}
                 currentLocation={
                   pointsMap[item.act_id][pointsMap[item.act_id].length - 1]
                 }
@@ -176,7 +180,10 @@ export default function HistoryScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+        >
           <ChevronLeft size={28} color="#111827" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Riwayat Aktivitas</Text>
@@ -191,18 +198,26 @@ export default function HistoryScreen() {
       ) : (
         <FlatList
           data={activities}
-          keyExtractor={(item, index) => item.act_id ? item.act_id.toString() : index.toString()}
+          keyExtractor={(item, index) =>
+            item.act_id ? item.act_id.toString() : index.toString()
+          }
           renderItem={renderActivityCard}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#FC6100']} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#FC6100']}
+            />
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Footprints size={64} color="#D1D5DB" />
               <Text style={styles.emptyTitle}>Belum ada riwayat</Text>
-              <Text style={styles.emptySub}>Mulai lacak aktivitas pertamamu sekarang!</Text>
+              <Text style={styles.emptySub}>
+                Mulai lacak aktivitas pertamamu sekarang!
+              </Text>
             </View>
           }
         />
@@ -214,7 +229,7 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6', 
+    backgroundColor: '#F3F4F6',
   },
   header: {
     flexDirection: 'row',
@@ -265,7 +280,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#FC6100', 
+    backgroundColor: '#FC6100',
     justifyContent: 'center',
     alignItems: 'center',
   },

@@ -1,291 +1,277 @@
 import { StyleSheet, Dimensions } from 'react-native';
 
 const { width } = Dimensions.get('window');
-const BSports_ORANGE = '#F8AD3C';
 
 export const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#EAEFEF' },
+  container: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
+    paddingTop: 10,
+    paddingBottom: 15,
+    backgroundColor: '#FFFFFF',
   },
   headerGreeting: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#9CA3AF',
+    fontSize: 14,
+    color: '#6B7280',
     marginBottom: 2,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '900',
-    color: BSports_ORANGE,
-    letterSpacing: -1.5,
+    color: '#FC6100', // Strava Orange
+    letterSpacing: 1,
   },
-  headerActionRow: { flexDirection: 'row', gap: 10 },
   iconCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#F9FAFB',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F1F1F1',
   },
-  notifBadge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#EF4444',
-    borderWidth: 1.5,
-    borderColor: '#FFF',
-  },
-  tabWrapper: { paddingHorizontal: 20, backgroundColor: '#EAEFEF' },
-  tabContainer: {
-    flexDirection: 'row',
-    gap: 25,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  tabButton: { paddingVertical: 12, position: 'relative' },
-  tabText: { fontSize: 15, fontWeight: '600', color: '#9CA3AF' },
-  activeTabText: { color: '#111827', fontWeight: '800' },
-  tabIndicator: {
-    position: 'absolute',
-    bottom: -1,
-    left: 0,
-    right: 0,
-    height: 3,
-    backgroundColor: BSports_ORANGE,
-    borderRadius: 3,
-  },
-  activeTab: { borderBottomColor: 'transparent' }, // Tambahan agar tidak error di komponen
-
   scrollContent: {
-    padding: 20,
     paddingBottom: 100,
-    backgroundColor: '#EAEFEF',
   },
-
-  // --- ERROR FIX: ACTIVITY & DASHBOARD PROPERTIES ---
-  activityContainer: { paddingBottom: 20 },
-
-  activityCardPremium: {
-    backgroundColor: '#FFF',
-    borderRadius: 24,
-    padding: 16,
+  
+  // Banner
+  bannerContainer: {
+    marginTop: 15,
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#F1F1F1',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
   },
-  activityUserHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  userAvatarContainer: { position: 'relative' }, // FIX ERROR
-  userAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: '#F3F4F6',
-  },
-  statusIndicator: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#10B981',
-    borderWidth: 2,
-    borderColor: '#FFF',
-  },
-  userInfo: { flex: 1, marginLeft: 12 },
-  userNamePremium: { fontSize: 15, fontWeight: '800', color: '#111827' },
-  activityDate: { fontSize: 11, color: '#9CA3AF' },
-  activityTitlePremium: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#111827',
-    marginBottom: 15,
-  },
-
-  // FIX ERROR STATS GRID
-  premiumStatsGrid: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 15,
-  },
-  mainStat: { flex: 1.2 }, // FIX ERROR
-  mainStatValue: { fontSize: 32, fontWeight: '900', color: BSports_ORANGE },
-  mainStatLabel: { fontSize: 9, fontWeight: '800', color: '#9CA3AF' },
-  statsDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: '#E5E7EB',
-    marginHorizontal: 15,
-  },
-
-  subStatsColumn: { flex: 1, gap: 8 }, // FIX ERROR
-  subStatItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  }, // FIX ERROR
-  subStatLabel: { fontSize: 11, color: '#6B7280' },
-  subStatValue: { fontSize: 13, fontWeight: '800', color: '#111827' },
-
-  // --- MAP & OTHERS ---
-  mapContainerPremium: {
+  bannerWrapper: {
     width: '100%',
-    height: 150,
+    height: 160,
     borderRadius: 16,
     overflow: 'hidden',
+    position: 'relative',
   },
-  mapImage: { width: '100%', height: '100%' },
-  mapOverlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+  bannerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  bannerOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 15,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  bannerTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  bannerSubtitle: {
+    color: '#E5E7EB',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  // Dot Indicators
+  dotContainer: {
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 12,
   },
-  mapActionButton: {
-    backgroundColor: '#FFF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#D1D5DB',
+    marginHorizontal: 4,
   },
-  mapActionText: { fontSize: 11, fontWeight: '800', color: '#111827' },
+  dotActive: {
+    width: 16,
+    backgroundColor: '#FC6100',
+  },
 
-  // --- DASHBOARD ---
-  dashboardWrapper: { marginBottom: 25 },
-  dashboardGreeting: {
-    fontSize: 16,
-    fontWeight: '800',
+  // Menus
+  menuGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginBottom: 30,
+  },
+  menuItem: {
+    alignItems: 'center',
+    width: (width - 40) / 4,
+  },
+  menuIconWrapper: {
+    width: 56,
+    height: 56,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  menuText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#374151',
+  },
+
+  // Dashboard Summary
+  dashboardWrapper: {
+    paddingHorizontal: 20,
+    marginBottom: 30,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
     color: '#111827',
     marginBottom: 12,
   },
-  dashboardGrid: { flexDirection: 'row', gap: 12 },
+  dashboardGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
   mainDashboardCard: {
     flex: 1,
     backgroundColor: '#111827',
-    borderRadius: 24,
+    borderRadius: 20,
     padding: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 6,
+    justifyContent: 'center',
   },
   dashboardIconBg: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: 'rgba(248,173,60,0.2)',
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(248, 173, 60, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 16,
   },
-  dashboardValue: { fontSize: 26, fontWeight: '900', color: '#FFF' },
-  dashboardUnit: { fontSize: 14, color: BSports_ORANGE },
-  dashboardLabel: {
-    fontSize: 11,
+  dashboardValue: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+  dashboardUnit: {
+    fontSize: 16,
     color: '#9CA3AF',
     fontWeight: '600',
-    marginTop: 2,
   },
-  dashboardSubGrid: { flex: 0.8, gap: 12 },
-  subDashboardCard: {
+  dashboardLabel: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: 4,
+  },
+  dashboardSubGrid: {
     flex: 1,
-    backgroundColor: '#FFF',
-    borderRadius: 20,
-    padding: 15,
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  subDashboardCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    borderWidth: 1,
-    borderColor: '#F1F1F1',
+    gap: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
   },
-  subDashboardValue: { fontSize: 16, fontWeight: '800', color: '#111827' },
+  subDashboardValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
   subDashboardLabel: {
-    fontSize: 9,
-    color: '#9CA3AF',
-    fontWeight: '700',
-    textTransform: 'uppercase',
+    fontSize: 12,
+    color: '#6B7280',
   },
 
-  // --- SECTION FEED & EVENTS ---
+  // FEED STYLES
+  feedWrapper: {
+    paddingHorizontal: 20,
+  },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 15,
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: '#111827' },
-  seeAllText: { fontSize: 12, color: BSports_ORANGE, fontWeight: '700' },
-  premiumCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 24,
-    marginBottom: 20,
-    overflow: 'hidden',
-    elevation: 4,
+  seeAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FC6100', // Strava Orange
+  },
+  activityCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    elevation: 3,
     shadowColor: '#000',
-    shadowOpacity: 0.07,
-    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    marginBottom: 20,
   },
-  imageWrapper: { width: '100%', height: 180 },
-  premiumImage: { width: '100%', height: '100%' },
-  floatingBadge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-  },
-  floatingBadgeText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
-  premiumContent: { padding: 16 },
-  premiumTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  premiumMetaRow: {
+  activityHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 16,
   },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  metaText: { fontSize: 13, fontWeight: '700', color: '#4B5563' },
-  metaDivider: {
-    width: 1,
-    height: 12,
-    backgroundColor: '#E5E7EB',
-    marginHorizontal: 12,
-  },
-  premiumButton: {
-    height: 48,
-    borderRadius: 14,
-    flexDirection: 'row',
+  avatarCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FC6100',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
   },
-  premiumButtonText: { color: '#FFF', fontSize: 14, fontWeight: '800' },
-  emptyText: { textAlign: 'center', color: '#9CA3AF', marginTop: 40 },
-  moreButton: { flexDirection: 'row', gap: 2, padding: 5 },
-  dot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#D1D5DB' },
+  activityTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  activityMeta: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+    textTransform: 'capitalize',
+  },
+  activityStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  statCol: {
+    flex: 1,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  mapContainer: {
+    height: 180,
+    width: '100%',
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  noMapContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#E5E7EB',
+  }
 });
