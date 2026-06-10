@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { useNavigation, useNavigationState } from '@react-navigation/native';
 import { Home, Play, User, Timer } from 'lucide-react-native';
 import Animated, {
@@ -17,24 +17,52 @@ import { darkTheme, lightTheme } from '../context/ThemeContext';
 const AnimatedIcon = ({
   children,
   isActive,
+  label,
+  theme,
 }: {
   children: React.ReactNode;
   isActive: boolean;
+  label: string;
+  theme: any;
 }) => {
-  const scale = useSharedValue(isActive ? 1.2 : 1);
+  const scale = useSharedValue(isActive ? 1.15 : 1);
+  const opacity = useSharedValue(isActive ? 1 : 0);
 
   useEffect(() => {
-    scale.value = withSpring(isActive ? 1.2 : 1, {
+    scale.value = withSpring(isActive ? 1.15 : 1, {
       damping: 15,
       stiffness: 150,
     });
+    opacity.value = withTiming(isActive ? 1 : 0, { duration: 200 });
   }, [isActive]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
+    alignItems: 'center',
   }));
 
-  return <Animated.View style={animatedStyle}>{children}</Animated.View>;
+  const textStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ scale: opacity.value }],
+    marginTop: 4,
+  }));
+
+  return (
+    <Animated.View style={animatedStyle}>
+      {children}
+      {/* 🔥 Mengganti Titik Neon dengan Teks Label */}
+      <Animated.View style={textStyle}>
+        <Text style={{
+          color: theme.ACCENT, 
+          fontSize: 10, 
+          fontWeight: 'bold',
+          letterSpacing: 0.5,
+        }}>
+          {label}
+        </Text>
+      </Animated.View>
+    </Animated.View>
+  );
 };
 
 export default function CustomTabBar() {
@@ -43,7 +71,6 @@ export default function CustomTabBar() {
     state => state?.routes[state.index]?.name,
   );
 
-  // Theme Integration
   const isDarkMode = useAuthStore(state => state.isDarkMode);
   const styles = getStyles(isDarkMode);
   const THEME = isDarkMode ? darkTheme : lightTheme;
@@ -62,7 +89,7 @@ export default function CustomTabBar() {
           style={styles.tabItem}
           activeOpacity={1}
         >
-          <AnimatedIcon isActive={activeRouteName === 'Home'}>
+          <AnimatedIcon isActive={activeRouteName === 'Home'} label="HOME" theme={THEME}>
             <Home
               size={24}
               color={activeRouteName === 'Home' ? THEME.ACCENT : THEME.TEXT_SUB}
@@ -96,12 +123,10 @@ export default function CustomTabBar() {
           style={styles.tabItem}
           activeOpacity={1}
         >
-          <AnimatedIcon isActive={activeRouteName === 'Profile'}>
+          <AnimatedIcon isActive={activeRouteName === 'Profile'} label="PROFILE" theme={THEME}>
             <User
               size={24}
-              color={
-                activeRouteName === 'Profile' ? THEME.ACCENT : THEME.TEXT_SUB
-              }
+              color={activeRouteName === 'Profile' ? THEME.ACCENT : THEME.TEXT_SUB}
               strokeWidth={activeRouteName === 'Profile' ? 2.5 : 2}
             />
           </AnimatedIcon>

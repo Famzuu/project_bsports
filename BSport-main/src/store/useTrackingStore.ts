@@ -64,7 +64,8 @@ export const useTrackingStore = create<TrackingState>(set => ({
         saveTracking({
           coords: newCoords,
           totalDistance: 0,
-          startTime: state.startTime, // 🔥 TAMBAH INI
+          startTime: state.startTime,
+          activityId: null
         });
 
         return {
@@ -108,7 +109,8 @@ export const useTrackingStore = create<TrackingState>(set => ({
       saveTracking({
         coords: newCoords,
         totalDistance: newDistance,
-        startTime: state.startTime, // 🔥 WAJIB
+        startTime: state.startTime,
+        activityId: null
       });
 
       return {

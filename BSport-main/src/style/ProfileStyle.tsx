@@ -7,46 +7,56 @@ const CARD_WIDTH = (width - 50) / 2;
 export const getStyles = (isDarkMode: boolean) => {
   const THEME = isDarkMode ? darkTheme : lightTheme;
 
+  // 🔥 Konsistensi Warna Neon Border & Glow dari HomeScreen
+  const neonBorderMain = isDarkMode ? THEME.ACCENT : 'transparent';
+  const neonBorderSubtle = isDarkMode ? `${THEME.ACCENT}66` : THEME.BORDER; // 40% Opacity
+  const glowShadow = isDarkMode ? THEME.ACCENT : '#000';
+
   return StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: THEME.BG },
     scrollContent: { paddingBottom: 40 },
 
     // --- HEADER SECTION ---
     headerGradient: {
-      // 🔥 HAPUS height: 260 agar ukuran menyesuaikan isi
-      paddingTop: 20, // 🔥 Kurangi dari 40 jadi 20 agar lebih naik
-      paddingBottom: 15, // 🔥 Beri ruang di bawah agar tidak mepet
+      paddingTop: 20,
+      paddingBottom: 25, // Sedikit diperbesar agar avatar tidak terlalu sesak
       alignItems: 'center',
-      backgroundColor: THEME.CARD,
+      backgroundColor: isDarkMode ? THEME.CARD : '#FFFFFF',
       borderBottomLeftRadius: 40,
       borderBottomRightRadius: 40,
+      // 🔥 Tambahkan Efek Border Bawah Terang & Shadow Glow
+      borderBottomWidth: isDarkMode ? 1.5 : 0,
+      borderColor: neonBorderMain,
+      shadowColor: glowShadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: isDarkMode ? 0.3 : 0.1,
+      shadowRadius: 15,
+      elevation: isDarkMode ? 10 : 5,
     },
     themeToggle: {
       position: 'absolute',
-      top: 20, // 🔥 Naikkan juga tombol bulan/matahari dari 50 ke 20
+      top: 20,
       right: 20,
       width: 44,
       height: 44,
       borderRadius: 12,
-      backgroundColor: isDarkMode
-        ? 'rgba(255,255,255,0.05)'
-        : 'rgba(0,0,0,0.05)',
+      backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
       justifyContent: 'center',
       alignItems: 'center',
       borderWidth: 1,
-      borderColor: THEME.BORDER,
+      borderColor: neonBorderSubtle, // 🔥 Samakan style border
       zIndex: 10,
     },
     
     // --- AVATAR DI HALAMAN UTAMA ---
     avatarContainer: {
       position: 'relative',
-      shadowColor: THEME.ACCENT,
-      shadowOffset: { width: 0, height: 10 },
-      shadowOpacity: 0.4,
+      shadowColor: glowShadow, // 🔥 Menggunakan glow neon
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: isDarkMode ? 0.5 : 0.2,
       shadowRadius: 20,
       elevation: 15,
-      marginTop: 10, // Tambahkan margin atas sedikit
+      marginTop: 10,
     },
     avatarCircle: {
       width: 100,
@@ -56,13 +66,14 @@ export const getStyles = (isDarkMode: boolean) => {
       justifyContent: 'center',
       alignItems: 'center',
       transform: [{ rotate: '45deg' }],
-      overflow: 'hidden', // 🔥 Wajib ada agar jadi diamond
+      overflow: 'hidden',
+      borderWidth: isDarkMode ? 1.5 : 0, // 🔥 Garis pinggir avatar
+      borderColor: THEME.CARD, 
     },
     avatarImage: {
-      width: 150, // 🔥 Harus lebih besar dari container agar menutupi sudut
+      width: 150,
       height: 150,
       transform: [{ rotate: '-45deg' }],
-      // 🔥 HAPUS position absolute agar gambar tetap di tengah
     },
     avatarText: {
       fontSize: 32,
@@ -87,8 +98,8 @@ export const getStyles = (isDarkMode: boolean) => {
       borderRadius: 50,
     },
     fullImageStyle: {
-      width: width, // Lebar penuh layar
-      height: width, // Buat kotak di tengah
+      width: width,
+      height: width,
     },
     fullImageName: {
       color: '#fff',
@@ -107,13 +118,13 @@ export const getStyles = (isDarkMode: boolean) => {
       letterSpacing: 0.5,
     },
     roleBadge: {
-      backgroundColor: isDarkMode
-        ? 'rgba(255, 255, 255, 0.1)'
-        : 'rgba(0, 0, 0, 0.05)',
+      backgroundColor: isDarkMode ? 'rgba(255, 94, 0, 0.1)' : 'rgba(255, 94, 0, 0.05)', // Bernuansa Accent
       paddingHorizontal: 12,
       paddingVertical: 4,
       borderRadius: 12,
       marginTop: 8,
+      borderWidth: 1,
+      borderColor: neonBorderSubtle, // 🔥 Beri outline tipis
     },
     roleText: {
       color: THEME.ACCENT,
@@ -134,16 +145,20 @@ export const getStyles = (isDarkMode: boolean) => {
       backgroundColor: THEME.CARD,
       borderRadius: 24,
       padding: 16,
+      // 🔥 Styling Neon Border Card (seperti Home)
       borderWidth: 1,
-      borderColor: THEME.BORDER,
+      borderColor: neonBorderSubtle,
+      shadowColor: glowShadow,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: isDarkMode ? 0.2 : 0.05,
+      shadowRadius: 8,
+      elevation: isDarkMode ? 4 : 2,
     },
     iconWrapper: {
       width: 40,
       height: 40,
       borderRadius: 12,
-      backgroundColor: isDarkMode
-        ? 'rgba(255, 94, 0, 0.1)'
-        : 'rgba(255, 94, 0, 0.05)',
+      backgroundColor: isDarkMode ? 'rgba(255, 94, 0, 0.15)' : 'rgba(255, 94, 0, 0.05)',
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: 12,
@@ -165,8 +180,14 @@ export const getStyles = (isDarkMode: boolean) => {
       padding: 18,
       borderRadius: 20,
       marginBottom: 12,
+      // 🔥 Styling Neon Border List Row
       borderWidth: 1,
-      borderColor: THEME.BORDER,
+      borderColor: neonBorderSubtle,
+      shadowColor: glowShadow,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: isDarkMode ? 0.2 : 0.05,
+      shadowRadius: 8,
+      elevation: isDarkMode ? 4 : 2,
     },
     menuLabel: {
       flex: 1,
@@ -184,6 +205,12 @@ export const getStyles = (isDarkMode: boolean) => {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      // 🔥 Beri efek Glow tebal pada Banner Orange!
+      shadowColor: glowShadow,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: isDarkMode ? 0.6 : 0.3,
+      shadowRadius: 15,
+      elevation: 8,
     },
     adminText: { color: '#fff', fontSize: 18, fontWeight: '800' },
     adminSub: { color: 'rgba(255,255,255,0.8)', fontSize: 12 },
@@ -198,7 +225,7 @@ export const getStyles = (isDarkMode: boolean) => {
       paddingVertical: 16,
       borderRadius: 24,
       borderWidth: 1,
-      borderColor: isDarkMode ? 'rgba(255, 59, 48, 0.3)' : '#FFCDD2',
+      borderColor: isDarkMode ? 'rgba(255, 59, 48, 0.5)' : '#FFCDD2',
     },
     logoutIconWrapper: {
       width: 32,
@@ -219,7 +246,7 @@ export const getStyles = (isDarkMode: boolean) => {
       paddingHorizontal: 20,
       paddingVertical: 15,
       borderBottomWidth: 1,
-      borderBottomColor: THEME.BORDER,
+      borderBottomColor: neonBorderSubtle, // 🔥 Samakan style garis pemisah
     },
     modalTitle: {
       fontSize: 18,
@@ -237,16 +264,17 @@ export const getStyles = (isDarkMode: boolean) => {
       height: 120,
       borderRadius: 35,
       backgroundColor: THEME.ACCENT,
-      justifyContent: 'center', // Pastikan konten di tengah
-      alignItems: 'center',     // Pastikan konten di tengah
+      justifyContent: 'center', 
+      alignItems: 'center',    
       transform: [{ rotate: '45deg' }],
-      overflow: 'hidden', // 🔥 Wajib ada agar memotong sisa gambar
+      overflow: 'hidden', 
+      borderWidth: isDarkMode ? 2 : 0, // 🔥 Garis outline avatar
+      borderColor: THEME.CARD, 
     },
     avatarImageLarge: {
-      width: 180, // 🔥 Lebih besar dari ukuran kotak agar menutupi sudut diamond
+      width: 180, 
       height: 180, 
       transform: [{ rotate: '-45deg' }],
-      // 🔥 Hapus position: absolute. Biarkan Flexbox yang menaruhnya di tengah
     },
     avatarTextLarge: {
       fontSize: 48,
@@ -258,13 +286,13 @@ export const getStyles = (isDarkMode: boolean) => {
       position: 'absolute',
       bottom: 10,
       right: 10,
-      backgroundColor: '#000',
+      backgroundColor: THEME.CARD, // Ubah jadi warna tema
       padding: 8,
       borderRadius: 12,
       transform: [{ rotate: '-45deg' }],
-      borderWidth: 2,
-      borderColor: '#fff',
-      zIndex: 10, // Agar selalu di atas gambar
+      borderWidth: 1,
+      borderColor: neonBorderMain, // Ikon kamera ada neonnya sedikit!
+      zIndex: 10, 
     },
     changePhotoText: {
       marginTop: 25,
@@ -289,7 +317,7 @@ export const getStyles = (isDarkMode: boolean) => {
       borderRadius: 20,
       marginBottom: 15,
       borderWidth: 1,
-      borderColor: THEME.BORDER,
+      borderColor: neonBorderSubtle, // Sama dengan bento card
     },
     tinyLabel: {
       fontSize: 10,
@@ -314,10 +342,11 @@ export const getStyles = (isDarkMode: boolean) => {
       paddingVertical: 18,
       borderRadius: 20,
       marginTop: 20,
-      shadowColor: THEME.ACCENT,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
+      // 🔥 Menerapkan Glow
+      shadowColor: glowShadow,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: isDarkMode ? 0.6 : 0.3,
+      shadowRadius: 10,
       elevation: 5,
     },
     saveButtonText: {

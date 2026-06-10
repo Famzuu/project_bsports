@@ -24,10 +24,14 @@ import LottieView from 'lottie-react-native';
 import api from '../../services/api';
 import { RootTabParamList } from '../../navigation/AppNavigator';
 
-// Import Map, Utils, & Styles (Sesuaikan path-nya jika perlu)
+// Import Map, Utils, & Styles
 import MapViewComponent from '../../components/MapViewComponent';
 import { formatTime } from '../../utils/trackingMath';
-import { styles } from '../../style/HomeStyle';
+
+// 🔥 1. Import Store dan Theme
+import { useAuthStore } from '../../store/useAuthStore';
+import { getStyles } from '../../style/HomeStyle';
+import { darkTheme, lightTheme } from '../../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 type NavigationProp = BottomTabNavigationProp<RootTabParamList, 'Home'>;
@@ -35,14 +39,23 @@ type NavigationProp = BottomTabNavigationProp<RootTabParamList, 'Home'>;
 export default function HomeScreen() {
   const navigation = useNavigation<NavigationProp>();
   const [refreshing, setRefreshing] = useState(false);
-  const [latestActivity, setLatestActivity] = useState<any>(null);
 
+  const [userName, setUserName] = useState<string>('Sporty');
+  const [latestActivity, setLatestActivity] = useState<any>(null);
   const [events, setEvents] = useState<any[]>([]);
   const scrollRef = useRef<ScrollView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
-  // 🔥 1. State untuk menyimpan nama user (Default: Sporty)
-  const [userName, setUserName] = useState<string>('Sporty');
+  const [dailySummary, setDailySummary] = useState({
+    distance: 0,
+    kcal: 0,
+    duration: 0,
+  });
+
+  // 🔥 2. Inisialisasi Tema Gelap/Terang
+  const isDarkMode = useAuthStore(state => state.isDarkMode);
+  const styles = getStyles(isDarkMode); // Ambil style berdasarkan tema
+  const THEME = isDarkMode ? darkTheme : lightTheme;
 
   const formatPace = (pace: number, distance?: number) => {
     if (!pace || !distance) return '--:--';
@@ -54,30 +67,58 @@ export default function HomeScreen() {
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
-  // 🔥 2. Fungsi untuk mengambil data User
+  const formatDurationText = (sec: number) => {
+    if (!sec) return '0m';
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
+  };
+
   const fetchUser = async () => {
     try {
-      const response = await api.get('/user'); // Endpoint default dari Laravel Sanctum
-      const userData = response.data?.data || response.data; // Handle struktur response
-      
+      const response = await api.get('/user');
+      const userData = response.data?.data || response.data;
       if (userData && userData.name) {
-        // Kita ambil nama depan saja agar tampilan header tetap rapi
-        const firstName = userData.name.split(' ')[0];
-        setUserName(firstName);
+        setUserName(userData.name.split(' ')[0]);
       }
     } catch (error) {
       console.log('Error fetching user:', error);
     }
   };
 
-  const fetchLatestActivity = async () => {
+  const fetchActivitiesData = async () => {
     try {
       const response = await api.get('/activities');
-      if (response.data?.data && response.data.data.length > 0) {
-        setLatestActivity(response.data.data[0]);
+      const activities = response.data?.data || [];
+
+      if (activities.length > 0) {
+        setLatestActivity(activities[0]);
       } else {
         setLatestActivity(null);
       }
+
+      const todayString = new Date().toDateString();
+      let totalDistance = 0;
+      let totalDuration = 0;
+
+      activities.forEach((act: any) => {
+        const actDate = new Date(
+          act.start_time || act.created_at,
+        ).toDateString();
+        if (actDate === todayString && act.status === 'finished') {
+          totalDistance += Number(act.distance || 0);
+          totalDuration += Number(act.duration || 0);
+        }
+      });
+
+      const totalKcal = totalDistance * 60;
+
+      setDailySummary({
+        distance: totalDistance,
+        duration: totalDuration,
+        kcal: Math.round(totalKcal),
+      });
     } catch (error) {
       console.log('Error fetching activity:', error);
     }
@@ -94,20 +135,18 @@ export default function HomeScreen() {
     }
   };
 
-  // 🔥 3. Panggil fetchUser di useFocusEffect
   useFocusEffect(
     useCallback(() => {
       fetchUser();
-      fetchLatestActivity();
+      fetchActivitiesData();
       fetchEvents();
     }, []),
   );
 
-  // 🔥 4. Tambahkan fetchUser ke onRefresh
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchUser();
-    await fetchLatestActivity();
+    await fetchActivitiesData();
     await fetchEvents();
     setRefreshing(false);
   }, []);
@@ -234,7 +273,11 @@ export default function HomeScreen() {
             <View
               style={[
                 styles.menuIconWrapper,
-                { backgroundColor: `${menu.color}15` },
+                {
+                  backgroundColor: isDarkMode
+                    ? `${menu.color}25`
+                    : `${menu.color}15`,
+                },
               ]}
             >
               <LottieView
@@ -261,10 +304,11 @@ export default function HomeScreen() {
       <View style={styles.dashboardGrid}>
         <TouchableOpacity style={styles.mainDashboardCard}>
           <View style={styles.dashboardIconBg}>
-            <MapPin size={22} color="#F8AD3C" />
+            <MapPin size={22} color={THEME.ACCENT} />
           </View>
           <Text style={styles.dashboardValue}>
-            12.4 <Text style={styles.dashboardUnit}>km</Text>
+            {dailySummary.distance.toFixed(2)}{' '}
+            <Text style={styles.dashboardUnit}>km</Text>
           </Text>
           <Text style={styles.dashboardLabel}>Total Jarak</Text>
         </TouchableOpacity>
@@ -273,14 +317,16 @@ export default function HomeScreen() {
           <View style={styles.subDashboardCard}>
             <Flame size={18} color="#EF4444" />
             <View>
-              <Text style={styles.subDashboardValue}>840</Text>
+              <Text style={styles.subDashboardValue}>{dailySummary.kcal}</Text>
               <Text style={styles.subDashboardLabel}>Kcal Terbakar</Text>
             </View>
           </View>
           <View style={styles.subDashboardCard}>
             <Timer size={18} color="#0284C7" />
             <View>
-              <Text style={styles.subDashboardValue}>1h 20m</Text>
+              <Text style={styles.subDashboardValue}>
+                {formatDurationText(dailySummary.duration)}
+              </Text>
               <Text style={styles.subDashboardLabel}>Waktu Aktif</Text>
             </View>
           </View>
@@ -316,16 +362,20 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      {/* 🔥 3. Sesuaikan StatusBar dengan tema */}
+      <StatusBar
+        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+        backgroundColor={THEME.BG}
+      />
 
       <View style={styles.header}>
         <View>
-          {/* 🔥 5. Tampilkan nama user secara dinamis */}
           <Text style={styles.headerGreeting}>Halo, {userName}!</Text>
           <Text style={styles.headerTitle}>B-SPORT</Text>
         </View>
         <TouchableOpacity style={styles.iconCircle}>
-          <Search size={22} color="#111827" />
+          {/* 🔥 Sesuaikan warna icon pencarian */}
+          <Search size={22} color={THEME.TEXT_MAIN} />
         </TouchableOpacity>
       </View>
 
@@ -336,7 +386,8 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#F8AD3C']}
+            colors={[THEME.ACCENT]}
+            tintColor={THEME.ACCENT}
           />
         }
       >
@@ -355,7 +406,16 @@ export default function HomeScreen() {
           </View>
 
           {latestActivity ? (
-            <View style={styles.activityCard}>
+            <TouchableOpacity
+              style={styles.activityCard}
+              activeOpacity={0.8}
+              onPress={() =>
+                navigation.navigate('ActivityDetail' as any, {
+                  activity: latestActivity,
+                  points: validPoints, // Mengirim points yang sudah difilter di HomeScreen
+                })
+              }
+            >
               <View style={styles.activityHeader}>
                 <View style={styles.avatarCircle}>
                   <CircleUser size={24} color="#FFF" />
@@ -407,15 +467,15 @@ export default function HomeScreen() {
                   >
                     <MapViewComponent
                       coords={validPoints}
-                      isDark={false}
+                      isDark={isDarkMode} // 🔥 4. Oper prop isDark ke MapView
                       hasPermission={true}
                       currentLocation={validPoints[validPoints.length - 1]}
                     />
                   </View>
                 ) : (
                   <View style={styles.noMapContainer}>
-                    <Footprints size={40} color="#D1D5DB" />
-                    <Text style={{ color: '#9CA3AF', marginTop: 8 }}>
+                    <Footprints size={40} color={THEME.BORDERLINE} />
+                    <Text style={{ color: THEME.TEXT_SUB, marginTop: 8 }}>
                       {activityDistance < 0.2
                         ? 'Jarak terlalu pendek untuk dipetakan'
                         : 'Memuat rute GPS...'}
@@ -423,10 +483,14 @@ export default function HomeScreen() {
                   </View>
                 )}
               </View>
-            </View>
+            </TouchableOpacity>
           ) : (
             <Text
-              style={{ textAlign: 'center', color: '#6B7280', marginTop: 10 }}
+              style={{
+                textAlign: 'center',
+                color: THEME.TEXT_SUB,
+                marginTop: 10,
+              }}
             >
               Belum ada aktivitas baru-baru ini.
             </Text>

@@ -19,7 +19,7 @@ import {
   Minimize2,
   ArrowLeft,
 } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 // State & Context
 import { useTrackingStore } from '../../store/useTrackingStore';
@@ -43,7 +43,11 @@ import {
 // Services
 import api from '../../services/api';
 import { startGPS, stopGPS } from '../../services/gpsService';
-import { loadTracking, clearTracking } from '../../services/trackingStorage';
+import {
+  loadTracking,
+  clearTracking,
+  saveTracking,
+} from '../../services/trackingStorage';
 import { addQueue, flushQueue } from '../../services/offlineQueue';
 import BackgroundService from 'react-native-background-actions';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -55,6 +59,8 @@ import {
 type Coord = {
   latitude: number;
   longitude: number;
+  recorded_at?: string;
+  timestamp?: number;
 };
 
 export default function TrackingScreen() {
@@ -79,6 +85,8 @@ export default function TrackingScreen() {
 
   const location = useLocation();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const eventId = route.params?.eventId || null;
   const mapRef = useRef<any>(null);
   const intervalRef = useRef<any>(null);
   const offlineIntervalRef = useRef<any>(null);
@@ -94,8 +102,9 @@ export default function TrackingScreen() {
 
   const safePost = async (url: string, data: any) => {
     try {
+      console.log('POST POINTS:', JSON.stringify(data));
       await api.post(url, data);
-    } catch (e) {
+    } catch (e: any) {
       await addQueue({ url, data });
     }
   };
@@ -127,6 +136,7 @@ export default function TrackingScreen() {
         useTrackingStore.setState({
           coords: data.coords || [],
           totalDistance: data.totalDistance || 0,
+          activityId: data.activityId || null,
           isTracking: true,
           startTime: data.startTime || Date.now(),
         });
@@ -141,6 +151,19 @@ export default function TrackingScreen() {
   }, []);
 
   useEffect(() => {
+    const { activityId } = useTrackingStore.getState();
+
+    if (!isTracking || !activityId) return;
+
+    saveTracking({
+      coords,
+      totalDistance,
+      startTime,
+      activityId,
+    });
+  }, [coords, totalDistance, startTime, isTracking]);
+
+  useEffect(() => {
     if (!isTracking) setElapsedTime(0);
   }, [isTracking]);
 
@@ -149,14 +172,24 @@ export default function TrackingScreen() {
     if (intervalRef.current) return;
     intervalRef.current = setInterval(async () => {
       // ✅ AMAN: Menggunakan .getState() tanpa tanda kurung ()
-      const { activityId, isTracking: currentTracking } = useTrackingStore.getState();
+      const { activityId, isTracking: currentTracking } =
+        useTrackingStore.getState();
 
       if (!activityId || !currentTracking) return;
 
       setBuffer(prev => {
-        if (prev.length === 0) return prev;
-        safePost(`/activities/${activityId}/points`, { points: prev });
+        if (prev.length === 0) {
+          return prev;
+        }
+
+        const payload = [...prev];
+
+        safePost(`/activities/${activityId}/points`, {
+          points: payload,
+        });
+
         AsyncStorage.removeItem('TEMP_BUFFER');
+
         return [];
       });
     }, 20000);
@@ -174,56 +207,70 @@ export default function TrackingScreen() {
       interval = setInterval(() => {
         const now = Date.now();
         const { pauseTime } = useTrackingStore.getState();
-        const pausedTime = totalPausedDuration + (isPaused ? now - (pauseTime || now) : 0);
+        const pausedTime =
+          totalPausedDuration + (isPaused ? now - (pauseTime || now) : 0);
         setElapsedTime(Math.floor((now - startTime - pausedTime) / 1000));
       }, 1000);
     }
     return () => clearInterval(interval);
   }, [isTracking, isPaused, startTime, totalPausedDuration]);
 
-  const handleStopRequest = () => {
-    pauseTracking();
-    setShowConfirmModal(true);
+  const handleStopRequest = async () => {
+    try {
+      const { activityId, totalDistance: finalDist } =
+        useTrackingStore.getState();
+      if (!activityId) return;
+      stopGPS();
+      await stopTrackingService();
+      stopTracking();
+      if (buffer.length > 0) {
+        await safePost(`/activities/${activityId}/points`, {
+          points: buffer,
+        });
+      }
+
+      await api.post(`/activities/${activityId}/finish`, {
+        total_distance: parseFloat(finalDist.toFixed(2)),
+        duration: elapsedTime,
+        pace:
+          pace === Infinity || !isFinite(pace)
+            ? 0
+            : parseFloat(pace.toFixed(2)),
+      });
+
+      await clearTracking();
+
+      await AsyncStorage.removeItem('TEMP_BUFFER');
+
+      setBuffer([]);
+      setViewMode('map');
+      setShowConfirmModal(true);
+    } catch (err) {
+      console.log('FINISH ERROR', err);
+
+      Alert.alert('Error', 'Gagal menyelesaikan aktivitas');
+    }
   };
 
   const handleDiscard = async () => {
     setShowConfirmModal(false);
-    stopGPS();
-    await stopTrackingService();
-    await clearTracking();
-    await AsyncStorage.removeItem('TEMP_BUFFER');
+    stopTracking();
     resetTracking();
     setElapsedTime(0);
     setBuffer([]);
-    setTimeout(() => navigation.goBack(), 0);
+    navigation.goBack();
   };
 
   const onConfirmSave = async () => {
-    // ✅ AMAN: Tarik data segar dari store
-    const { activityId, totalDistance: finalDist } = useTrackingStore.getState();
+    const { activityId, totalDistance: finalDist } =
+      useTrackingStore.getState();
+
     if (!activityId) return;
 
-    stopTracking();
-    stopGPS();
-    await stopTrackingService();
-    await clearTracking();
-    await AsyncStorage.removeItem('TEMP_BUFFER');
-
-    try {
-      if (buffer.length > 0) {
-        await safePost(`/activities/${activityId}/points`, { points: buffer });
-      }
-      await api.post(`/activities/${activityId}/finish`, {
-        total_distance: parseFloat(finalDist.toFixed(2)),
-        duration: elapsedTime,
-        pace: pace === Infinity || !isFinite(pace) ? 0 : parseFloat(pace.toFixed(2)),
-      });
-    } catch (err) {
-      console.log('FINISH ERROR', err);
-    }
-
-    setBuffer([]);
     setShowConfirmModal(false);
+
+    stopTracking();
+
     navigation.navigate('SaveActivityScreen', {
       activityId,
       finalDistance: finalDist.toFixed(2),
@@ -231,6 +278,8 @@ export default function TrackingScreen() {
       finalPace: pace,
       initialSportType: sportType,
     });
+
+    resetTracking();
   };
 
   const startLiveTracking = async () => {
@@ -249,7 +298,10 @@ export default function TrackingScreen() {
             PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
           );
           if (grantedNotif !== PermissionsAndroid.RESULTS.GRANTED) {
-            Alert.alert('Izin Dibutuhkan', 'Aplikasi wajib memiliki izin Notifikasi.');
+            Alert.alert(
+              'Izin Dibutuhkan',
+              'Aplikasi wajib memiliki izin Notifikasi.',
+            );
             return;
           }
         }
@@ -266,12 +318,18 @@ export default function TrackingScreen() {
         const res = await api.post('/activities/start', {
           start_lat: location.latitude,
           start_lng: location.longitude,
+          event_id: eventId,
         });
+
         actId = res.data.act_id;
       } catch (e) {
         await addQueue({
           url: '/activities/start',
-          data: { start_lat: location.latitude, start_lng: location.longitude },
+          data: {
+            start_lat: location.latitude,
+            start_lng: location.longitude,
+            event_id: eventId,
+          },
         });
       }
 
@@ -292,25 +350,41 @@ export default function TrackingScreen() {
 
         const prevCoords = useTrackingStore.getState().coords;
         const last = prevCoords[prevCoords.length - 1];
-        const lastRaw = prevCoords.length > 1 ? prevCoords[prevCoords.length - 2] : last;
+        const lastRaw =
+          prevCoords.length > 1 ? prevCoords[prevCoords.length - 2] : last;
         let speed = coord.speed || 0;
 
         if (last) {
           const d = getDistance(last, coord);
-          const timeDiff = (Date.now() - (last?.timestamp || Date.now())) / 1000;
+          const timeDiff =
+            (Date.now() - (last?.timestamp || Date.now())) / 1000;
           if (timeDiff > 0 && !speed) speed = (d * 1000) / timeDiff;
           if (speed > 25) return;
-          if (d < 0.0015) return;
+          if (d < 0.0003) return;
         }
 
-        let finalCoord = kalmanFilter(coord.latitude, coord.longitude, speed);
+        const filtered = kalmanFilter(coord.latitude, coord.longitude, speed);
+        console.log('FILTERED:', filtered);
+
+        let finalCoord = {
+          latitude: Number(filtered.latitude.toFixed(7)),
+          longitude: Number(filtered.longitude.toFixed(7)),
+          recorded_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        };
 
         if (last && prevCoords.length > 5) {
-          finalCoord = smoothCoordinate(last, finalCoord, lastRaw);
+          const smoothed = smoothCoordinate(last, finalCoord, lastRaw);
+
+          finalCoord = {
+            latitude: Number(smoothed.latitude.toFixed(7)),
+            longitude: Number(smoothed.longitude.toFixed(7)),
+            recorded_at: new Date().toISOString(),
+          };
         }
 
         setBuffer(prev => {
           const newBuffer = [...prev.slice(-200), finalCoord];
+          console.log('BUFFER SIZE:', newBuffer.length);
           AsyncStorage.setItem('TEMP_BUFFER', JSON.stringify(newBuffer));
           return newBuffer;
         });
@@ -323,6 +397,24 @@ export default function TrackingScreen() {
       });
 
       startTracking();
+
+      // 🔥 FIX: SUNTIKAN TITIK PERTAMA SECARA INSTAN
+      if (location) {
+        const firstPoint = {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          recorded_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
+          timestamp: Date.now(),
+        };
+        
+        // 1. Masukkan ke buffer agar interval 20 detik langsung mengirimnya ke Laravel
+        setBuffer([firstPoint]);
+        AsyncStorage.setItem('TEMP_BUFFER', JSON.stringify([firstPoint]));
+        
+        // 2. Masukkan ke Peta dan State
+        useTrackingStore.getState().addCoord(firstPoint);
+      }
+
       setViewMode('stats');
     } catch (err) {
       console.log(err);
@@ -334,10 +426,17 @@ export default function TrackingScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
+      <StatusBar
+        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+        translucent
+        backgroundColor="transparent"
+      />
 
       {!isTracking && (
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
           <ArrowLeft size={24} color={THEME.TEXT_MAIN} />
         </TouchableOpacity>
       )}
@@ -346,14 +445,14 @@ export default function TrackingScreen() {
         <View style={styles.mapWrapper}>
           <MapViewComponent
             ref={mapRef}
-            coords={coords.map(c => [c.longitude, c.latitude])} 
+            coords={coords.map(c => [c.longitude, c.latitude])}
             isDark={isDarkMode}
             hasPermission={true}
             currentLocation={
-              lastCoord 
-                ? [lastCoord.longitude, lastCoord.latitude] 
-                : location 
-                ? [location.longitude, location.latitude] 
+              lastCoord
+                ? [lastCoord.longitude, lastCoord.latitude]
+                : location
+                ? [location.longitude, location.latitude]
                 : null
             }
           />
@@ -368,8 +467,15 @@ export default function TrackingScreen() {
         </View>
       )}
 
-      <TouchableOpacity style={styles.toggleViewBtn} onPress={() => setViewMode(viewMode === 'map' ? 'stats' : 'map')}>
-        {viewMode === 'map' ? <Maximize2 size={22} color={THEME.TEXT_MAIN} /> : <Minimize2 size={22} color={THEME.TEXT_MAIN} />}
+      <TouchableOpacity
+        style={styles.toggleViewBtn}
+        onPress={() => setViewMode(viewMode === 'map' ? 'stats' : 'map')}
+      >
+        {viewMode === 'map' ? (
+          <Maximize2 size={22} color={THEME.TEXT_MAIN} />
+        ) : (
+          <Minimize2 size={22} color={THEME.TEXT_MAIN} />
+        )}
       </TouchableOpacity>
 
       {viewMode === 'map' && (
@@ -391,22 +497,41 @@ export default function TrackingScreen() {
 
       {viewMode === 'map' && (
         <View style={styles.gpsBadge}>
-          <View style={[styles.gpsDot, { backgroundColor: location?.status === 'good' ? '#22C55E' : '#EF4444' }]} />
-          <Text style={styles.gpsText}>{!location ? 'Searching GPS...' : 'GPS Active'}</Text>
+          <View
+            style={[
+              styles.gpsDot,
+              {
+                backgroundColor:
+                  location?.status === 'good' ? '#22C55E' : '#EF4444',
+              },
+            ]}
+          />
+          <Text style={styles.gpsText}>
+            {!location ? 'Searching GPS...' : 'GPS Active'}
+          </Text>
         </View>
       )}
 
       {viewMode === 'map' && (
         <View style={styles.mapControls}>
-          <TouchableOpacity style={styles.controlBtn} onPress={() => mapRef.current?.recenter()}>
+          <TouchableOpacity
+            style={styles.controlBtn}
+            onPress={() => mapRef.current?.recenter()}
+          >
             <Target size={24} color={THEME.TEXT_MAIN} />
           </TouchableOpacity>
           <View style={styles.zoomGroup}>
-            <TouchableOpacity style={styles.zoomBtn} onPress={() => mapRef.current?.zoomIn()}>
+            <TouchableOpacity
+              style={styles.zoomBtn}
+              onPress={() => mapRef.current?.zoomIn()}
+            >
               <Plus size={24} color={THEME.TEXT_MAIN} />
             </TouchableOpacity>
             <View style={styles.divider} />
-            <TouchableOpacity style={styles.zoomBtn} onPress={() => mapRef.current?.zoomOut()}>
+            <TouchableOpacity
+              style={styles.zoomBtn}
+              onPress={() => mapRef.current?.zoomOut()}
+            >
               <Minus size={24} color={THEME.TEXT_MAIN} />
             </TouchableOpacity>
           </View>
@@ -416,28 +541,66 @@ export default function TrackingScreen() {
       <View style={styles.bottomControls}>
         {!isTracking ? (
           <View style={{ width: '100%', alignItems: 'center' }}>
-            <SportSelector sportType={sportType} setSportType={setSportType} isDarkMode={isDarkMode} THEME={THEME} />
-            <TouchableOpacity style={[styles.actionButton, { backgroundColor: THEME.ACCENT }]} onPress={startLiveTracking}>
+            <SportSelector
+              sportType={sportType}
+              setSportType={setSportType}
+              isDarkMode={isDarkMode}
+              THEME={THEME}
+            />
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: THEME.ACCENT }]}
+              onPress={startLiveTracking}
+            >
               <Play size={32} color="#fff" fill="#fff" />
             </TouchableOpacity>
           </View>
         ) : !isPaused ? (
-          <TouchableOpacity style={[styles.actionButton, { backgroundColor: THEME.CARD }]} onPress={pauseTracking}>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: THEME.CARD }]}
+            onPress={async () => {
+              pauseTracking();
+
+              const { activityId } = useTrackingStore.getState();
+
+              if (activityId) {
+                await api.post(`/activities/${activityId}/pause`);
+              }
+            }}
+          >
             <Pause size={32} color={THEME.TEXT_MAIN} />
           </TouchableOpacity>
         ) : (
           <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.secondaryButton} onPress={handleStopRequest}>
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={handleStopRequest}
+            >
               <Square size={24} color="#fff" fill="#fff" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.primaryButton} onPress={resumeTracking}>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={async () => {
+                resumeTracking();
+
+                const { activityId } = useTrackingStore.getState();
+
+                if (activityId) {
+                  await api.post(`/activities/${activityId}/resume`);
+                }
+              }}
+            >
               <Play size={36} color="#fff" fill="#fff" />
             </TouchableOpacity>
           </View>
         )}
       </View>
 
-      <SaveActivityModal visible={showConfirmModal} onDiscard={handleDiscard} onSave={onConfirmSave} styles={styles} />
+      <SaveActivityModal
+        visible={showConfirmModal}
+        onDiscard={handleDiscard}
+        onSave={onConfirmSave}
+        styles={styles}
+      />
     </View>
   );
 }

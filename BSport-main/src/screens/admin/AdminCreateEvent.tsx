@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -37,6 +37,36 @@ export default function AdminCreateEvent({ navigation }: any) {
   const [targetJarak, setTargetJarak] = useState('');
   const [tipeLomba, setTipeLomba] = useState('virtual');
   const [status, setStatus] = useState('upcoming');
+  const [trackingMode, setTrackingMode] = useState('single_session');
+  const [competitionType, setCompetitionType] = useState('fastest_finish');
+  useEffect(() => {
+    /*
+  |--------------------------------------------------------------------------
+  | LIVE EVENT
+  |--------------------------------------------------------------------------
+  */
+
+    if (tipeLomba === 'live') {
+      setTrackingMode('single_session');
+
+      setCompetitionType('fastest_finish');
+
+      return;
+    }
+
+    /*
+  |--------------------------------------------------------------------------
+  | VIRTUAL EVENT
+  |--------------------------------------------------------------------------
+  */
+
+    if (trackingMode === 'accumulative') {
+      setCompetitionType('longest_distance');
+    } else {
+      setCompetitionType('fastest_finish');
+    }
+  }, [tipeLomba, trackingMode]);
+
   const [statusAktif, setStatusAktif] = useState(true);
 
   const [imageObj, setImageObj] = useState<any>(null);
@@ -101,17 +131,22 @@ export default function AdminCreateEvent({ navigation }: any) {
     setIsLoading(true);
 
     try {
-      // Kita bungkus jadi objek JSON biasa, bukan FormData
       const payload = {
         nama_event: namaEvent,
         tipe_lomba: tipeLomba,
         target_jarak: targetJarak,
         deskripsi: deskripsi || '',
         status: status,
+
+        tracking_mode: trackingMode,
+        competition_type: competitionType,
+
         jadwal_start: formatTanggalDB(jadwalStart),
         jadwal_selesai: formatTanggalDB(jadwalSelesai),
+
         status_aktif: statusAktif ? 1 : 0,
-        image_base64: imageObj ? imageObj.base64 : null, // Kirim gambar berupa teks!
+
+        image_base64: imageObj ? imageObj.base64 : null,
       };
 
       await api.post('/events', payload); // Axios akan otomatis mengirim sebagai application/json
@@ -255,6 +290,87 @@ export default function AdminCreateEvent({ navigation }: any) {
               />
             ))}
           </View>
+          <InputLabel
+            icon={<Activity size={16} color={THEME.ACCENT} />}
+            label="Tracking Mode"
+            theme={THEME}
+          />
+
+          <View
+            style={{
+              marginTop: 18,
+              padding: 14,
+              borderRadius: 14,
+              backgroundColor: THEME.CARD,
+            }}
+          >
+            <Text
+              style={{
+                color: THEME.TEXT_SUB,
+                fontSize: 12,
+                marginBottom: 6,
+                textTransform: 'uppercase',
+                letterSpacing: 1,
+              }}
+            >
+              Competition Type
+            </Text>
+
+            <Text
+              style={{
+                color: THEME.TEXT_MAIN,
+                fontSize: 15,
+                fontWeight: '700',
+              }}
+            >
+              {competitionType === 'fastest_finish'
+                ? 'Fastest Finish'
+                : 'Longest Distance'}
+            </Text>
+
+            <Text
+              style={{
+                color: THEME.TEXT_SUB,
+                marginTop: 6,
+                lineHeight: 18,
+                fontSize: 13,
+              }}
+            >
+              {competitionType === 'fastest_finish'
+                ? 'Peserta dengan waktu tercepat akan berada di ranking teratas.'
+                : 'Peserta dengan total jarak terbesar akan berada di ranking teratas.'}
+            </Text>
+          </View>
+
+          <View style={styles.segmentContainer}>
+            <SegmentBtn
+              active={trackingMode === 'single_session'}
+              label="Single Session"
+              onPress={() => setTrackingMode('single_session')}
+              styles={styles}
+            />
+
+            <SegmentBtn
+              active={trackingMode === 'accumulative'}
+              disabled={tipeLomba === 'live'}
+              label="Accumulative"
+              onPress={() => setTrackingMode('accumulative')}
+              styles={styles}
+            />
+          </View>
+
+          {tipeLomba === 'live' && (
+            <Text
+              style={{
+                color: THEME.TEXT_SUB,
+                marginTop: 10,
+                fontSize: 13,
+                lineHeight: 18,
+              }}
+            >
+              Live Race hanya mendukung Single Session tracking.
+            </Text>
+          )}
         </View>
 
         {/* TIMELINE & VISIBILITY */}
@@ -370,9 +486,24 @@ const InputLabel = ({ icon, label, required, theme }: any) => (
   </View>
 );
 
-const SegmentBtn = ({ active, label, onPress, styles }: any) => (
+const SegmentBtn = ({
+  active,
+  label,
+  onPress,
+  styles,
+  disabled = false,
+}: any) => (
   <TouchableOpacity
-    style={[styles.segmentBtn, active && styles.segmentBtnActive]}
+    disabled={disabled}
+    style={[
+      styles.segmentBtn,
+      active && styles.segmentBtnActive,
+
+      disabled && {
+        opacity: 0.4,
+        backgroundColor: '#9CA3AF20',
+      },
+    ]}
     onPress={onPress}
   >
     <Text style={[styles.segmentText, active && styles.segmentTextActive]}>

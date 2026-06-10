@@ -13,6 +13,8 @@ import EventScreen from '../screens/event/EventScreen';
 import EventDetailScreen from '../screens/event/EventDetailScreen';
 import HistoryScreen from '../screens/history/HistoryScreen';
 
+import ActivityDetailScreen from '../screens/activity/ActivityDetailScreen';
+
 // Import Screens - Auth
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
@@ -28,7 +30,9 @@ import SplashScreen from '../screens/SplashScreen';
 // Type Definitions
 export type RootTabParamList = {
   Home: undefined;
-  Tracking: undefined;
+  Tracking: {
+    eventId?: number;
+  };
   Profile: undefined;
 };
 
@@ -46,6 +50,9 @@ export type RootStackParamList = {
   EventScreen: undefined;
 
   HistoryScreen: undefined;
+
+  // 🔥 2. TAMBAHKAN TIPE UNTUK ACTIVITY DETAIL DI SINI
+  ActivityDetail: { activity: any; points?: any[] };
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -79,7 +86,6 @@ function MainTabs() {
 }
 
 // Navigasi Utama: Penjaga Gerbang Aplikasi
-// Navigasi Utama: Penjaga Gerbang Aplikasi
 export default function AppNavigator() {
   const { token, isHydrated } = useAuthStore();
 
@@ -93,7 +99,7 @@ export default function AppNavigator() {
         {token ? (
           <>
             <Stack.Screen name="Main" component={MainTabs} />
-            <Stack.Screen name='EventScreen' component={EventScreen} />
+            <Stack.Screen name="EventScreen" component={EventScreen} />
             <Stack.Screen name="EventDetail" component={EventDetailScreen} />
             <Stack.Screen name="AdminEventList" component={AdminEventList} />
             <Stack.Screen name="HistoryScreen" component={HistoryScreen} />
@@ -108,6 +114,12 @@ export default function AppNavigator() {
             <Stack.Screen
               name="SaveActivityScreen"
               component={SaveActivityScreen}
+            />
+
+            {/* 🔥 3. DAFTARKAN LAYAR ACTIVITY DETAIL DI SINI */}
+            <Stack.Screen
+              name="ActivityDetail"
+              component={ActivityDetailScreen}
             />
           </>
         ) : (

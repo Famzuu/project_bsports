@@ -6,6 +6,7 @@ export type TrackingStorageType = {
   coords: any[];
   totalDistance: number;
   startTime: number | null;
+  activityId: number | null;
 };
 
 export const saveTracking = async (data: TrackingStorageType) => {

@@ -1,4 +1,3 @@
-// src/components/SaveActivityModal.tsx
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal } from 'react-native';
 
@@ -7,9 +6,13 @@ interface Props {
   onDiscard: () => void;
   onSave: () => void;
   styles: any;
+  isDarkMode?: boolean; // Terima isDarkMode sebagai props opsional
 }
 
-export default function SaveActivityModal({ visible, onDiscard, onSave, styles }: Props) {
+export default function SaveActivityModal({ visible, onDiscard, onSave, styles, isDarkMode }: Props) {
+  // Jika dark mode, teks discard dibuat putih, jika terang, warna merah.
+  const discardTextColor = isDarkMode ? '#FFFFFF' : '#FF3B30'; 
+  
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.modalOverlay}>
@@ -20,7 +23,7 @@ export default function SaveActivityModal({ visible, onDiscard, onSave, styles }
           </Text>
           <View style={styles.modalButtons}>
             <TouchableOpacity style={styles.modalBtnDiscard} onPress={onDiscard}>
-              <Text style={{ fontWeight: 'bold' }}>Discard</Text>
+              <Text style={{ fontWeight: 'bold', color: discardTextColor }}>Discard</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.modalBtnSave} onPress={onSave}>
               <Text style={{ color: '#fff', fontWeight: 'bold' }}>Save</Text>

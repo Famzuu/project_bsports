@@ -21,7 +21,8 @@ import {
   Save,
 } from 'lucide-react-native';
 import api from '../../services/api';
-import { styles } from '../../style/SaveActivityStyle';
+import { getStyles } from '../../style/SaveActivityStyle';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export default function SaveActivityScreen() {
   const route = useRoute<any>();
@@ -29,6 +30,10 @@ export default function SaveActivityScreen() {
   
   // 🔥 TANGKAP initialSportType DARI TRACKING SCREEN
   const { activityId, initialSportType } = route.params;
+
+  // 3. 🔥 AMBIL TEMA DAN INISIALISASI STYLES DI SINI
+  const isDarkMode = useAuthStore(state => state.isDarkMode);
+  const styles = getStyles(isDarkMode);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');

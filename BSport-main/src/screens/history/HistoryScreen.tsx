@@ -17,7 +17,7 @@ import api from '../../services/api';
 import MapViewComponent from '../../components/MapViewComponent';
 
 export default function HistoryScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const [activities, setActivities] = useState<any[]>([]);
   const [pointsMap, setPointsMap] = useState<{ [key: number]: any[] }>({});
   const [loading, setLoading] = useState(true);
@@ -112,8 +112,15 @@ export default function HistoryScreen() {
         });
 
     return (
-      <View style={styles.activityCard}>
-        {/* Header: User Avatar, Title, Date */}
+    <TouchableOpacity 
+      style={styles.activityCard}
+      activeOpacity={0.8}
+      onPress={() => navigation.navigate('ActivityDetail' as any, {
+        activity: item,
+        points: pointsMap[item.act_id]
+      })}
+    >
+      {/* Header: User Avatar, Title, Date */}
         <View style={styles.activityHeader}>
           <View style={styles.avatarCircle}>
             <CircleUser size={24} color="#FFF" />
@@ -170,7 +177,7 @@ export default function HistoryScreen() {
             </View>
           )}
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
